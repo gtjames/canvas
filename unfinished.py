@@ -1,6 +1,4 @@
-import requests
 import sys
-import json
 import canvas
 
 courseId = "320100"
@@ -12,11 +10,13 @@ num = 0
 if len(sys.argv) > 2:
     school   = sys.argv[1]
     courseId = sys.argv[2]
+else:
+    school   = input("Enter School: ")
+    courseId = input("Enter Course: ")
 
 canvas.setSchool(school)
 
 def listUnfinishedAssignments(courseId):
-    """List students and their unsubmitted assignments."""
     students    = canvas.getStudents(courseId)
     assignments = canvas.getAssignments(courseId)
     studentAssignments = {student['id']: {"name": student['name'], "unsubmitted": []} for student in students}

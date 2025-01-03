@@ -10,24 +10,14 @@ single = "0";
 if len(sys.argv) > 2:
     school   = sys.argv[1]
     courseId = sys.argv[2]
+else:
+    school   = input("Enter School: ")
+    courseId = input("Enter Course: ")
+
 if len(sys.argv) > 3:
     single = sys.argv[3]
 
 canvas.setSchool(school)
-
-# Get details on a student
-def getStudent(studentId, member):
-    try:
-        student= canvas.getStudent(studentId)
-        # Get the last and first names
-        lastName, rest = student['sortable_name'].split(", ")
-        firstName = rest.split(" ")[0]
-        # - {st['time_zone'].ljust(15)[:15]} 
-        print(f"\t- {firstName.ljust(10)[:10]} {lastName.ljust(15)} {student['primary_email']} - {student['time_zone'].ljust(15)[:15]} ")
-
-    except requests.exceptions.RequestException as e:
-        # Handle any HTTP or connection errors
-        print(f"\t- {member["name"]} has dropped the course")
 
 # Main code
 def listTeamMembers(courseId):
@@ -36,9 +26,12 @@ def listTeamMembers(courseId):
         print(f"{course['name']} (ID: {course['id']})")
         # if we are only interestin 'U'nassigned this is the route to take
         if single == "u":
-            canvas.getUnassignedMbr(course['id'])
+            members = canvas.getUnassigned(course['id'])
+            for member in members:
+                canvas.showStudent(member['id'], member["name"])
             break
 
+        # if we want the group membership this is the place
         groups = canvas.getGroups(course['id'])
         for group in groups:
             if group['members_count'] == 0:

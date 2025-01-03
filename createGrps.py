@@ -14,14 +14,11 @@ else:
     courseId = input("Enter Course: ")
 
 canvas.setSchool(school)
-canvasURL = canvas.getCanvasURL(school)
 
 times = [" 1 PM UTC --  6 AM MT",  " 3 PM UTC --  8 AM MT",  " 5 PM UTC -- 10 AM MT",   
          " 7 PM UTC --  Noon MT",  " 9 PM UTC --  2 PM MT",  "11 PM UTC --  4 PM MT",
          " 1 AM UTC --  6 PM MT",  " 3 AM UTC --  8 PM MT",]
 days = ["Tuesday ", "Thursday"]
-
-headers = canvas.getAuthorization(school)
 
 courses = canvas.getCategories(courseId)
 for course in courses:
@@ -38,7 +35,7 @@ for course in courses:
         # Data for the PUT request
         data = { "name": teamName, "max_membership": 6 }
         # print(f"{url}{group["id"]}")
-        response = requests.put(f"{canvasURL}/groups/{group["id"]}", headers=headers, data=data)
+        response = requests.put(f"{canvas.canvasURL}/groups/{group["id"]}", headers=canvas.headers, data=data)
         grpNum=grpNum+1
         teamNum=teamNum+1
         if teamNum == 8:
