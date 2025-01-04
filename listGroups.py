@@ -1,26 +1,16 @@
-import requests
 import sys
 import canvas
 
-courseId = "320100"
-school = "byui"
 single = "0";
 
-# Run the function
-if len(sys.argv) > 2:
-    school   = sys.argv[1]
-    courseId = sys.argv[2]
-else:
-    school   = input("Enter School: ")
-    courseId = input("Enter Course: ")
-
-if len(sys.argv) > 3:
-    single = sys.argv[3]
-
-canvas.setSchool(school)
-
 # Main code
-def listTeamMembers(courseId):
+def listTeamMembers():
+    courseId = canvas.getParams()
+
+    single = "0"
+    if len(sys.argv) > 3:
+        single = sys.argv[3]
+
     courses = canvas.getCategories(courseId)
     for course in courses:
         print(f"{course['name']} (ID: {course['id']})")
@@ -39,5 +29,3 @@ def listTeamMembers(courseId):
 
             if (group['members_count'] == 1 and single == "1") or single == "0":
                 canvas.listMembers(group)
-
-listTeamMembers(courseId)

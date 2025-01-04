@@ -1,9 +1,25 @@
+import sys
 import requests
 import json
 
-school = ""
+school   = ""
 canvasURL = ""
-headers = ""
+headers   = ""
+courseId  = ""
+
+def getParams():
+    global school
+    global courseId
+
+    if len(sys.argv) > 2:
+        school   = sys.argv[1]
+        courseId = sys.argv[2]
+    else:
+        school   = input("Enter School: ")
+        courseId = input("Enter Course: ")
+
+    setSchool(school)
+    return courseId
 
 # Canvas API details
 def setSchool(schoolId):
@@ -75,6 +91,20 @@ def getUnassigned(groupId):
     response = requests.get( f"{canvasURL}/group_categories/{groupId}/users?unassigned=true", headers=headers )
     response.raise_for_status()
     return response.json()
+
+def getUnfinishedAssignments(courseId):
+    students    = getStudents(courseId)
+    assignments = getAssignments(courseId)
+    studentAssignments = {student['id']: {"name": student['name'], "unsubmitted": []} for student in students}
+
+    for assignment in assignments:
+        submissions = getSubmissionByStatus(courseId, assignment['id'], 'unsubmitted')
+        for submission in submissions:
+            studentId = submission['user_id']
+            if studentId in studentAssignments:
+                studentAssignments[studentId]["unsubmitted"].append(assignment['name'])
+
+    return studentAssignments
 
 # traverse from the categories in a course to the groups to the members
 def listMembers(group):
