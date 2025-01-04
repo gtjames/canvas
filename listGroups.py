@@ -7,9 +7,7 @@ single = "0";
 def listTeamMembers():
     courseId = canvas.getParams()
 
-    single = "0"
-    if len(sys.argv) > 3:
-        single = sys.argv[3]
+    single = input("(1) Solo, (0) All, (u) Unassigned: ")
 
     courses = canvas.getCategories(courseId)
     for course in courses:
