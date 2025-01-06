@@ -18,6 +18,12 @@ def getParams():
         school   = input("Enter School: ")
         courseId = input("Enter Course: ")
 
+    courses = ["3252", "4205", "119066", "119069"]
+    if (int(courseId) < 10):
+        courseId = courses[int(courseId)]
+        print(F"{courseId}")
+    if (school == ""):
+        school = "byupw"
     setSchool(school)
     return courseId
 
@@ -88,7 +94,8 @@ def getSubmissionByStatus(courseId, assignmentId, state):
 
 # Get members not in a group
 def getUnassigned(groupId):
-    response = requests.get( f"{canvasURL}/group_categories/{groupId}/users?unassigned=true", headers=headers )
+    params = { "per_page": 100 }  # Maximum allowed per page 
+    response = requests.get( f"{canvasURL}/group_categories/{groupId}/users?unassigned=true", headers=headers, params=params )
     response.raise_for_status()
     return response.json()
 
