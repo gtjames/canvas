@@ -5,11 +5,9 @@ single = "0";
 
 # Main code
 def listTeamMembers():
-    courseId = canvas.getParams()
-
     single = input("(1) Solo, (0) All, (u) Unassigned: ")
 
-    courses = canvas.getCategories(courseId)
+    courses = canvas.getCategories(canvas.courseId)
     for course in courses:
         print(f"{course['name']} (ID: {course['id']})")
         # if we are only interestin 'U'nassigned this is the route to take

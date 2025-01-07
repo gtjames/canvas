@@ -2,10 +2,12 @@ import  listAnnouncements
 import  listGroups
 import  nameGroups
 import  unsubmitted
+import  canvas
 
 def main():
     while True:
         print("\nMain Menu")
+        print("0. Student List")
         print("1. Review Announcements")
         print("2. List Team Members")
         print("3. Setup Groups")
@@ -13,7 +15,10 @@ def main():
         print("5. Exit")
         
         choice = input("Enter your choice: ")
-        
+        canvas.getParams()
+
+        if choice == '0':
+            canvas.studentRoster()
         if choice == '1':
             listAnnouncements.listAnnouncements()
         elif choice == '2':

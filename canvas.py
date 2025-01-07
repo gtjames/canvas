@@ -16,7 +16,7 @@ def getParams():
         courseId = sys.argv[2]
     else:
         school   = input("Enter School: ")
-        courseId = input("Enter Course: ")
+        courseId = input("Enter Course: [3252, 4205, 119066, 119069]: ")
 
     courses = ["3252", "4205", "119066", "119069"]
     if (int(courseId) < 10):
@@ -83,6 +83,12 @@ def getStudents(courseId):
     }
     response = requests.get(f"{canvasURL}/courses/{courseId}/users", headers=headers, params=params)
     return response.json()
+
+def studentRoster():
+    students    = getStudents(courseId)
+    for student in students:
+        showStudent(student['id'], student["name"])
+
 
 def getSubmissionByStatus(courseId, assignmentId, state):
     response = requests.get(f"{canvasURL}/courses/{courseId}/assignments/{assignmentId}/submissions", headers=headers, params={"per_page": 100})
