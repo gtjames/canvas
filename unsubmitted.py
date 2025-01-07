@@ -1,10 +1,8 @@
 import canvas
 
 def reviewUnsubmitted():
-    courseId = canvas.getParams()
-
     # Example usage:
-    unfinished_assignments = canvas.getUnfinishedAssignments(courseId)
+    unfinished_assignments = canvas.getUnfinishedAssignments(canvas.courseId)
 
     # Display results
     row = 0
