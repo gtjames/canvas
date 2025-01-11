@@ -12,14 +12,21 @@ def main():
         print("2. List Team Members")
         print("3. Setup Groups")
         print("4. Review Unsubmitted")
-        print("5. Exit")
+        print("5. Students w/ Team")
+        print("9. Exit")
         
         choice = input("Enter your choice: ")
-        canvas.getParams()
+        if choice == '9':
+            exit()
+        if len(choice) > 2:
+            choice, canvas.school, canvas.courseId  = choice.split(" ")
+            canvas.setSchool(canvas.school)
+        else:
+            canvas.getParams()
 
         if choice == '0':
             canvas.studentRoster()
-        if choice == '1':
+        elif choice == '1':
             listAnnouncements.listAnnouncements()
         elif choice == '2':
             listGroups.listTeamMembers()
@@ -28,7 +35,7 @@ def main():
         elif choice == '4':
             unsubmitted.reviewUnsubmitted()
         elif choice == '5':
-            exit()
+            listGroups.studentInTeam()
         else:
             print("Invalid choice, please try again.")
 

@@ -1,4 +1,3 @@
-import sys
 import requests
 import json
 
@@ -11,19 +10,13 @@ def getParams():
     global school
     global courseId
 
-    if len(sys.argv) > 2:
-        school   = sys.argv[1]
-        courseId = sys.argv[2]
-    else:
-        school   = input("Enter School: ")
-        courseId = input("Enter Course: [3252, 4205, 119066, 119069]: ")
+    school   = input("Enter School: ")
+    courseId = input("Enter Course: [3252, 4205, 119066, 119069]: ")
 
     courses = ["3252", "4205", "119066", "119069"]
     if (int(courseId) < 10):
         courseId = courses[int(courseId)]
         print(F"{courseId}")
-    if (school == ""):
-        school = "byupw"
     setSchool(school)
     return courseId
 
@@ -33,7 +26,10 @@ def setSchool(schoolId):
     global canvasURL
     global headers
 
-    school = schoolId
+    if (schoolId == ""):
+        school = "byupw"
+    else:
+        school = schoolId
 
     canvasURL = f"https://{school}.instructure.com/api/v1"
 
@@ -85,10 +81,10 @@ def getStudents(courseId):
     return response.json()
 
 def studentRoster():
-    students    = getStudents(courseId)
+    students = getStudents(courseId)
     for student in students:
         showStudent(student['id'], student["name"])
-
+    print(f"# Enrolled: {len(students)}")
 
 def getSubmissionByStatus(courseId, assignmentId, state):
     response = requests.get(f"{canvasURL}/courses/{courseId}/assignments/{assignmentId}/submissions", headers=headers, params={"per_page": 100})
@@ -125,6 +121,7 @@ def listMembers(group):
     members = getGroupMembers(group['id'])
     for member in members:
         showStudent(member['id'], member["name"])
+    return len(members)
 
 def deleteAnnouncements(courseId, topicId):
     response = requests.delete(f"{canvasURL}/courses/{courseId}/discussion_topics/{topicId}", headers=headers)
@@ -137,10 +134,9 @@ def showStudent(studentId, name):
         # Get the last and first names
         lastName, rest = student['sortable_name'].split(", ")
         firstName = rest.split(" ")[0]
-        # - {st['time_zone'].ljust(15)[:15]} 
-        print(f"\t- {firstName.ljust(10)[:10]} {lastName.ljust(15)} {student['primary_email']} - {student['time_zone'].ljust(15)[:15]} ")
+        print(f"    - {firstName.ljust(10)[:10]} {lastName.ljust(15)} {student['primary_email'].ljust(30)} - {student['time_zone'].ljust(15)[:15]} ")
 
     except requests.exceptions.RequestException as e:
         # Handle any HTTP or connection errors
-        print(f"\t- {name} has dropped the course")
+        print(f"    - {name} has dropped the course")
 

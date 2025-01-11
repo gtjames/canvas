@@ -1,12 +1,13 @@
-import sys
 import canvas
+import requests
 
 single = "0";
+sortBy = "name"
 
 # Main code
 def listTeamMembers():
     single = input("(1) Solo, (0) All, (u) Unassigned: ")
-
+    cnt = 0;
     courses = canvas.getCategories(canvas.courseId)
     for course in courses:
         print(f"{course['name']} (ID: {course['id']})")
@@ -23,5 +24,57 @@ def listTeamMembers():
                 if group['members_count'] == 0:
                     continue
 
-                if (group['members_count'] <= 2 and single == "1") or single == "0":
-                    canvas.listMembers(group)
+                if (group['members_count'] == 1 and single == "1") or single == "0":
+                    cnt = canvas.listMembers(group) + cnt
+            print(f"Members: {cnt}")
+
+def studentInTeam():
+    global sortBy
+    
+    students=[]
+    courses = canvas.getCategories(canvas.courseId)
+    for course in courses:
+        groups = canvas.getGroups(course['id'])
+        for group in groups:
+            if group['members_count'] == 0:
+                continue
+            members = canvas.getGroupMembers(group['id'])
+            for member in members:
+                lastName, rest = member['sortable_name'].split(", ")
+                firstName = rest.split(" ")[0]
+                students.append({"student": member["name"], "first": firstName, "last": lastName, "id": member["id"], "group": group["name"]})
+    sortBy = input("Sort By: ")
+    group = ""
+    while len(sortBy) > 0:
+        students.sort(key=sortByName)
+        for student in students:
+            if sortBy == "first":
+                print(f"{student["first"].ljust(10)[:10]} {student["last"].ljust(15)[:15]} : {student["group"]}")
+            elif sortBy == "last":
+                print(f"{student["last"].ljust(15)[:15]} {student["first"].ljust(10)[:10]} : {student["group"]}")
+            elif sortBy == "group":
+                if group != student["group"]:
+                    print(f"{student["group"]}")
+                lastLogin = getLastLogin(student["id"])
+                # activity  = getTotalActivityTime(student["id"])                {activity}
+                print(f"    {student["first"].ljust(10)[:10]} {student["last"].ljust(15)[:15]} - {lastLogin}")
+                group = student["group"]
+        sortBy = input("Sort By: ")
+
+def sortByName(val):
+    return val[sortBy].lower()
+
+# Get Last Login
+def getLastLogin(studentId):
+    params = { "include[]": "last_login" }
+    response = requests.get(f"{canvas.canvasURL}/users/{studentId}", headers=canvas.headers, params=params)
+    userStats = response.json()
+    return userStats["last_login"]
+
+# Get Total Activity Time
+def getTotalActivityTime(studentId):
+    response = requests.get(f"{canvas.canvasURL}/courses/{canvas.courseId}/users/{studentId}", headers=canvas.headers)
+    stats = response.json()
+    activityTime = stats.get("total_activity_time", "N/A")
+    return activityTime
+# total_activity_time = analytics_data.get("total_activity_time", "N/A")
