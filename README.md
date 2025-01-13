@@ -1,6 +1,11 @@
 # canvas
 ##  A set of Python scripts to read the student information
-
+###     all options ask for the option, the university and the course id
+*   you can just time option space university space CourseId
+*   and I will parse them to the three params
+*   for instance 5 byupw XXXX will list the teams for class XXXX
+*   You can also use option space space CourseId
+*   and it will default to byupw
 ##  Main Menu
 ##  0. Student List
         who is in the class. You can sort by name or email
