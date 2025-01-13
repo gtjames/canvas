@@ -2,7 +2,6 @@ import canvas
 import requests
 
 single = "0";
-sortBy = "name"
 
 # Main code
 def listTeamMembers():
@@ -29,8 +28,6 @@ def listTeamMembers():
             print(f"Members: {cnt}")
 
 def studentInTeam():
-    global sortBy
-    
     students=[]
     courses = canvas.getCategories(canvas.courseId)
     for course in courses:
