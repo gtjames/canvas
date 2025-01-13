@@ -8,11 +8,11 @@ def main():
     while True:
         print("\nMain Menu")
         print("0. Student List")
-        print("1. Review Announcements")
+        print("1. Delete old Announcements")
         print("2. List Team Members")
-        print("3. Setup Groups")
+        print("3. Rename Groups")
         print("4. Review Unsubmitted")
-        print("5. Students w/ Team")
+        print("5. Students w/ Teams")
         print("9. Exit")
         
         choice = input("Enter your choice: ")

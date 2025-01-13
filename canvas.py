@@ -80,8 +80,19 @@ def getStudents(courseId):
     response = requests.get(f"{canvasURL}/courses/{courseId}/users", headers=headers, params=params)
     return response.json()
 
+def sortByAttr(data, attribute):
+    try:
+        # Use sorted with the attribute as the key
+        return sorted(data, key=lambda item: item[attribute])
+    except KeyError:
+        print(f"Invalid attribute: {attribute}")
+        return data
+
 def studentRoster():
+    sortBy = input("Sort By (name, email): ")
     students = getStudents(courseId)
+    students = sortByAttr(students, sortBy)
+
     for student in students:
         showStudent(student['id'], student["name"])
     print(f"# Enrolled: {len(students)}")

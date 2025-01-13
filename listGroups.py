@@ -42,27 +42,25 @@ def studentInTeam():
             for member in members:
                 lastName, rest = member['sortable_name'].split(", ")
                 firstName = rest.split(" ")[0]
-                students.append({"student": member["name"], "first": firstName, "last": lastName, "id": member["id"], "group": group["name"]})
-    sortBy = input("Sort By: ")
+                students.append({"name": member["name"], "first": firstName, "last": lastName, "id": member["id"], "group": group["name"]})
+    sortBy = input("Sort By (first, last, group): ")
     group = ""
     while len(sortBy) > 0:
-        students.sort(key=sortByName)
+        students = canvas.sortByAttr(students, sortBy)
         for student in students:
-            if sortBy == "first":
+            if sortBy == "first":       #   first
                 print(f"{student["first"].ljust(10)[:10]} {student["last"].ljust(15)[:15]} : {student["group"]}")
-            elif sortBy == "last":
+            elif sortBy == "last":      #   last
                 print(f"{student["last"].ljust(15)[:15]} {student["first"].ljust(10)[:10]} : {student["group"]}")
-            elif sortBy == "group":
-                if group != student["group"]:
-                    print(f"{student["group"]}")
+            elif sortBy == "group":     #   group
+                if group != student["group"]:       #   did the group change?
+                    print(f"{student["group"]}")    #   print the group name
                 lastLogin = getLastLogin(student["id"])
-                # activity  = getTotalActivityTime(student["id"])                {activity}
-                print(f"    {student["first"].ljust(10)[:10]} {student["last"].ljust(15)[:15]} - {lastLogin}")
-                group = student["group"]
-        sortBy = input("Sort By: ")
-
-def sortByName(val):
-    return val[sortBy].lower()
+                canvas.showStudent(student['id'], student["name"])
+                # activity  = getTotalActivityTime(student["id"])    {activity}
+                # print(f"    {student["first"].ljust(10)[:10]} {student["last"].ljust(15)[:15]} - {lastLogin}")
+                group = student["group"]            #   save current group
+        sortBy = input("Sort By (first, last, group): ")
 
 # Get Last Login
 def getLastLogin(studentId):
