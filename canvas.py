@@ -1,5 +1,6 @@
 import requests
 import json
+from datetime import datetime, timezone
 
 school   = ""
 canvasURL = ""
@@ -103,7 +104,8 @@ def getSubmissionByStatus(courseId, assignmentId, state):
     
     # uniqueStates = {s['workflow_state'] for s in submissions}
     # print(uniqueStates)
-    return [s for s in submissions if s['workflow_state'] == state]
+    # return [s for s in submissions if s['workflow_state'] == state]
+    return [s for s in submissions if s['missing'] == 1]
 
 # Get members not in a group
 def getUnassigned(groupId):
@@ -115,15 +117,28 @@ def getUnassigned(groupId):
 def getUnfinishedAssignments(courseId):
     students    = getStudents(courseId)
     assignments = getAssignments(courseId)
+    pastDueAssignments = []
     studentAssignments = {student['id']: {"name": student['name'], "unsubmitted": []} for student in students}
 
     for assignment in assignments:
+        dueDate = assignment.get('due_at')
+        if dueDate:
+            dueDate = datetime.fromisoformat(dueDate.replace('Z', '+00:00'))
+            # Skip assignments that aren't past due
+            if dueDate > datetime.now(timezone.utc):
+                continue
+        # print(f"assignmentName: {assignment['name']}, dueDate: {dueDate}")
         submissions = getSubmissionByStatus(courseId, assignment['id'], 'unsubmitted')
         for submission in submissions:
             studentId = submission['user_id']
             if studentId in studentAssignments:
                 studentAssignments[studentId]["unsubmitted"].append(assignment['name'])
-
+                # pastDueAssignments.append({
+                #     'assignmentName': assignment['name'],
+                #     'studentId': submission['user_id'],
+                #     'dueDate': dueDate.isoformat(),
+                # })
+    # print(pastDueAssignments)
     return studentAssignments
 
 # traverse from the categories in a course to the groups to the members

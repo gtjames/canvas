@@ -7,11 +7,10 @@ def reviewUnsubmitted():
     # Display results
     row = 0
     for studentId, info in unfinished_assignments.items():
-        row += 1
-        print(f"Student: {row} {info['name']}")
         if info['unsubmitted']:
-            print("  unSubmitted Assignments:")
+            print(f"Student: {row} {info['name']}")
+            row += 1
             for assignment in info['unsubmitted']:
                 print(f"    - {assignment}")
-        else:
-            print("  All assignments completed!")
+        # else:
+        #     print("  All assignments completed!")
