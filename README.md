@@ -31,8 +31,6 @@
         Team 12 WDD330 Thursday  5 PM UTC -- 10 AM Mtn 
 ##  4. Review Unsubmitted
         It's time to check who has not turned in what
-        I don't like what this is doing. It shows all unsubmitted assignments
-        I need to tweek it to show assignments that are late and no future assignments
 ##  5. Students w/ Teams
         My favorite option
         List everyone in a team
