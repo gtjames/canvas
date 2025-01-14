@@ -10,7 +10,7 @@ def main():
         print("0. Student List")
         print("1. Delete old Announcements")
         print("2. List Team Members")
-        print("3. Rename Groups")
+        # print("3. Rename Groups")
         print("4. Review Unsubmitted")
         print("5. Students w/ Teams")
         print("9. Exit")
@@ -30,12 +30,14 @@ def main():
             listAnnouncements.listAnnouncements()
         elif choice == '2':
             listGroups.listTeamMembers()
-        elif choice == '3':
-            nameGroups.nameGroups()
+        # elif choice == '3':
+        #     nameGroups.nameGroups()
         elif choice == '4':
             unsubmitted.reviewUnsubmitted()
         elif choice == '5':
             listGroups.studentInTeam()
+        elif choice == '6':
+            canvas.clearCache()
         else:
             print("Invalid choice, please try again.")
 

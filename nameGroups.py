@@ -12,15 +12,23 @@ def nameGroups():
 
         groups = canvas.getGroups(course['id'])
 
-        grpNum = 0
-        teamNum=0
+        grpNum  = 0
+        teamNum = 0
+        first=True
         for group in groups:
             print(f"{group['name']}")
+            if first:
+                teamName = "People Dropping the Class",
+                print(teamName)
+                data = { "name": teamName, "max_membership": 6 }
+                response = requests.put(f"{canvas.canvasURL}/groups/{group["id"]}", headers=canvas.headers, data=data)
+                first = False
+                continue
+
             teamName = f"Team {teamNum:02d} WDD330 {"Tuesday" if grpNum < 8 else "Thursday"} {times[grpNum%8]} "
             print(teamName)
             # Data for the PUT request
             data = { "name": teamName, "max_membership": 6 }
-            # print(f"{url}{group["id"]}")
             response = requests.put(f"{canvas.canvasURL}/groups/{group["id"]}", headers=canvas.headers, data=data)
             grpNum=grpNum+1
             teamNum=teamNum+1

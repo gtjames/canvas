@@ -7,6 +7,37 @@ canvasURL = ""
 headers   = ""
 courseId  = ""
 
+_announcements = {}
+_assignments = {}
+_categories = {}
+_groups = {}
+_groupMembers = {}
+_lastLogin = {}
+_students = {}
+_submissionByStatus = {}
+_unassigned = {}
+
+def clearCache():
+    global _announcements
+    global _assignments
+    global _categories
+    global _groups
+    global _groupMembers
+    global _lastLogin
+    global _students
+    global _submissionByStatus
+    global _unassigned
+
+    _announcements = {}
+    _assignments = {}
+    _categories = {}
+    _groups = {}
+    _groupMembers = {}
+    _lastLogin = {}
+    _students = {}
+    _submissionByStatus = {}
+    _unassigned = {}
+
 def getParams():
     global school
     global courseId
@@ -47,39 +78,77 @@ def getAuthorization():
     return headers
 
 def getAnnouncements(courseId):
-    response = requests.get(f"{canvasURL}/courses/{courseId}/discussion_topics?only_announcements=true", headers=headers, params={"per_page": 100})
-    return response.json()
+    global _announcements
+
+    if courseId not in _announcements:
+        response = requests.get(f"{canvasURL}/courses/{courseId}/discussion_topics?only_announcements=true", headers=headers, params={"per_page": 100})
+        _announcements[courseId] = response.json()
+    return _announcements[courseId]
 
 def getAssignments(courseId):
-    response = requests.get(f"{canvasURL}/courses/{courseId}/assignments", headers=headers, params={"per_page": 100})
-    return response.json()
+    global _assignments
+
+    if courseId not in _assignments:
+        response = requests.get(f"{canvasURL}/courses/{courseId}/assignments", headers=headers, params={"per_page": 100})
+        _assignments[courseId] = response.json()
+    return _assignments[courseId]
 
 # Get group categories
 def getCategories(courseId):
-    response = requests.get( f"{canvasURL}/courses/{courseId}/group_categories", headers=headers )
-    return response.json()
+    global _categories
+
+    if courseId not in _categories:
+        response = requests.get( f"{canvasURL}/courses/{courseId}/group_categories", headers=headers )
+        _categories[courseId] = response.json()
+    return _categories[courseId]
 
 # Get all groups within the specified group category
 def getGroups(catId):
-    response = requests.get( f"{canvasURL}/group_categories/{catId}/groups?per_page=20", headers=headers )
-    return response.json()
+    global _groups
+
+    if catId not in _groups:
+        response = requests.get( f"{canvasURL}/group_categories/{catId}/groups?per_page=20", headers=headers )
+        _groups[catId] = response.json()
+    return _groups[catId]
 
 # Get members in each group
-def getGroupMembers(group_id):
-    response = requests.get( f"{canvasURL}/groups/{group_id}/users", headers=headers )
-    return response.json()
+def getGroupMembers(groupId):
+    global _groupMembers
+
+    if groupId not in _groupMembers:
+        response = requests.get( f"{canvasURL}/groups/{groupId}/users", headers=headers )
+        _groupMembers[groupId] = response.json()
+    return _groupMembers[groupId]
+
+# Get Last Login
+def getLastLogin(studentId):
+    global _lastLogin
+
+    if studentId not in _lastLogin:
+        params = { "include[]": "last_login" }
+        response = requests.get(f"{canvas.canvasURL}/users/{studentId}", headers=canvas.headers, params=params)
+        _lastLogin[studentId] = response.json()
+    return _lastLogin[studentId]["last_login"]
 
 def getStudent(studentId):
-    response = requests.get( f"{canvasURL}/users/{studentId}/profile", headers=headers )
-    return response.json()
+    global _students
+
+    if studentId not in _students:
+        response = requests.get( f"{canvasURL}/users/{studentId}/profile", headers=headers )
+        _students[studentId] = response.json()
+    return _students[studentId]
 
 def getStudents(courseId):
-    params = {
-        "enrollment_type[]": "student",
-        "per_page": 100,  # Maximum allowed per page
-    }
-    response = requests.get(f"{canvasURL}/courses/{courseId}/users", headers=headers, params=params)
-    return response.json()
+    global _students
+
+    if courseId not in _students:
+        params = {
+            "enrollment_type[]": "student",
+            "per_page": 100,  # Maximum allowed per page
+        }
+        response = requests.get(f"{canvasURL}/courses/{courseId}/users", headers=headers, params=params)
+        _students[courseId] = response.json()
+    return _students[courseId]
 
 def sortByAttr(data, attribute):
     try:
@@ -99,20 +168,34 @@ def studentRoster():
     print(f"# Enrolled: {len(students)}")
 
 def getSubmissionByStatus(courseId, assignmentId, state):
-    response = requests.get(f"{canvasURL}/courses/{courseId}/assignments/{assignmentId}/submissions", headers=headers, params={"per_page": 100})
-    submissions = response.json()
+    global _submissionByStatus
+
+    if assignmentId not in _submissionByStatus:
+        response = requests.get(f"{canvasURL}/courses/{courseId}/assignments/{assignmentId}/submissions", headers=headers, params={"per_page": 100})
+        _submissionByStatus[assignmentId] = response.json()
     
     # uniqueStates = {s['workflow_state'] for s in submissions}
     # print(uniqueStates)
     # return [s for s in submissions if s['workflow_state'] == state]
-    return [s for s in submissions if s['missing'] == 1]
+    return [s for s in _submissionByStatus[assignmentId] if s['missing'] == 1]
+
+# Get Total Activity Time
+def getTotalActivityTime(studentId):
+    response = requests.get(f"{canvasURL}/courses/{courseId}/users/{studentId}", headers=headers)
+    stats = response.json()
+    activityTime = stats.get("total_activity_time", "N/A")
+    return activityTime
+# total_activity_time = analytics_data.get("total_activity_time", "N/A")
 
 # Get members not in a group
 def getUnassigned(groupId):
-    params = { "per_page": 100 }  # Maximum allowed per page 
-    response = requests.get( f"{canvasURL}/group_categories/{groupId}/users?unassigned=true", headers=headers, params=params )
-    response.raise_for_status()
-    return response.json()
+    global _unassigned
+
+    if groupId not in _unassigned:
+        params = { "per_page": 100 }  # Maximum allowed per page 
+        response = requests.get( f"{canvasURL}/group_categories/{groupId}/users?unassigned=true", headers=headers, params=params )
+        _unassigned[groupId] = response.json()
+    return _unassigned[groupId]
 
 def getUnfinishedAssignments(courseId):
     students    = getStudents(courseId)
