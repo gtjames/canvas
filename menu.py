@@ -13,6 +13,7 @@ def main():
         # print("3. Rename Groups")
         print("4. Review Unsubmitted")
         print("5. Students w/ Teams")
+        print("6. Clear Cache")
         print("9. Exit")
         
         choice = input("Enter your choice: ")
