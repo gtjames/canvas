@@ -5,10 +5,11 @@ def nameGroups():
     times = [" 1 PM UTC --  6 AM Mtn",  " 3 PM UTC --  8 AM Mtn",  " 5 PM UTC -- 10 AM Mtn",
             " 7 PM UTC --  Noon Mtn",  " 9 PM UTC --  2 PM Mtn",  "11 PM UTC --  4 PM Mtn",
             " 1 AM UTC --  6 PM Mtn",  " 3 AM UTC --  8 PM Mtn",]
+    print(f"{canvas.color[canvas.courseId]}")
 
     courses = canvas.getCategories(canvas.courseId)
     for course in courses:
-        print(f"{course['name']} (ID: {course['id']})")
+        print(f"{course['name']}")
 
         groups = canvas.getGroups(course['id'])
 

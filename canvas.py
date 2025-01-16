@@ -6,6 +6,8 @@ school   = ""
 canvasURL = ""
 headers   = ""
 courseId  = ""
+color = {"3252": "\033[30m", "4205": "\033[30m", "reset": "\033[0m"}
+
 
 _announcements = {}
 _assignments = {}
@@ -27,6 +29,7 @@ def clearCache():
     global _students
     global _submissionByStatus
     global _unassigned
+    global color
 
     _announcements = {}
     _assignments = {}
@@ -37,19 +40,25 @@ def clearCache():
     _students = {}
     _submissionByStatus = {}
     _unassigned = {}
+    color = {"3252": "\033[30m", "4205": "\033[30m", "reset": "\033[0m"}
 
-def getParams():
+def setColor(rgb):
+    color[courseId] = f"\033[3{rgb}m"
+    print(f"{color[courseId]}Course color for {courseId}\033[0m")
+
+def setParams():
     global school
     global courseId
 
     school   = input("Enter School: ")
     courseId = input("Enter Course: [3252, 4205, 119066, 119069]: ")
-
     courses = ["3252", "4205", "119066", "119069"]
     if (int(courseId) < 10):
         courseId = courses[int(courseId)]
-        print(F"{courseId}")
+        print(f"{color[courseId]}{courseId}")
     setSchool(school)
+    if courseId not in color:
+        setColor(4)
     return courseId
 
 # Canvas API details
@@ -126,7 +135,7 @@ def getLastLogin(studentId):
 
     if studentId not in _lastLogin:
         params = { "include[]": "last_login" }
-        response = requests.get(f"{canvas.canvasURL}/users/{studentId}", headers=canvas.headers, params=params)
+        response = requests.get(f"{canvasURL}/users/{studentId}", headers=headers, params=params)
         _lastLogin[studentId] = response.json()
     return _lastLogin[studentId]["last_login"]
 
@@ -155,17 +164,19 @@ def sortByAttr(data, attribute):
         # Use sorted with the attribute as the key
         return sorted(data, key=lambda item: item[attribute])
     except KeyError:
-        print(f"Invalid attribute: {attribute}")
+        print(f"{color[courseId]}Invalid attribute: {attribute}")
         return data
 
-def studentRoster():
-    sortBy = input("Sort By (name, email): ")
-    students = getStudents(courseId)
-    students = sortByAttr(students, sortBy)
+# def studentRoster():
+#     students = getStudents(courseId)
+#     sortBy = input(f"{color['reset']}Sort By (name, email): ")
+#     while len(sortBy) > 0:
+#         students = sortByAttr(students, sortBy)
 
-    for student in students:
-        showStudent(student['id'], student["name"])
-    print(f"# Enrolled: {len(students)}")
+#         for student in students:
+#             showStudent(student['id'], student["name"])
+#         print(f"{color[courseId]}# Enrolled: {len(students)}")
+#         sortBy = input(f"{color['reset']}Sort By (name, email): ")
 
 def getSubmissionByStatus(courseId, assignmentId, state):
     global _submissionByStatus
@@ -173,10 +184,6 @@ def getSubmissionByStatus(courseId, assignmentId, state):
     if assignmentId not in _submissionByStatus:
         response = requests.get(f"{canvasURL}/courses/{courseId}/assignments/{assignmentId}/submissions", headers=headers, params={"per_page": 100})
         _submissionByStatus[assignmentId] = response.json()
-    
-    # uniqueStates = {s['workflow_state'] for s in submissions}
-    # print(uniqueStates)
-    # return [s for s in submissions if s['workflow_state'] == state]
     return [s for s in _submissionByStatus[assignmentId] if s['missing'] == 1]
 
 # Get Total Activity Time
@@ -200,7 +207,6 @@ def getUnassigned(groupId):
 def getUnfinishedAssignments(courseId):
     students    = getStudents(courseId)
     assignments = getAssignments(courseId)
-    pastDueAssignments = []
     studentAssignments = {student['id']: {"name": student['name'], "unsubmitted": []} for student in students}
 
     for assignment in assignments:
@@ -210,18 +216,12 @@ def getUnfinishedAssignments(courseId):
             # Skip assignments that aren't past due
             if dueDate > datetime.now(timezone.utc):
                 continue
-        # print(f"assignmentName: {assignment['name']}, dueDate: {dueDate}")
+        # print(f"{color[courseId]}assignmentName: {assignment['name']}, dueDate: {dueDate}")
         submissions = getSubmissionByStatus(courseId, assignment['id'], 'unsubmitted')
         for submission in submissions:
             studentId = submission['user_id']
             if studentId in studentAssignments:
                 studentAssignments[studentId]["unsubmitted"].append(assignment['name'])
-                # pastDueAssignments.append({
-                #     'assignmentName': assignment['name'],
-                #     'studentId': submission['user_id'],
-                #     'dueDate': dueDate.isoformat(),
-                # })
-    # print(pastDueAssignments)
     return studentAssignments
 
 # traverse from the categories in a course to the groups to the members
@@ -243,9 +243,8 @@ def showStudent(studentId, name):
         # Get the last and first names
         lastName, rest = student['sortable_name'].split(", ")
         firstName = rest.split(" ")[0]
-        print(f"    - {firstName.ljust(10)[:10]} {lastName.ljust(15)} {student['primary_email'].ljust(30)} - {student['time_zone'].ljust(15)[:15]} ")
-
+        print(f"{color[courseId]}    - {firstName.ljust(10)[:10]} {lastName.ljust(15)} {student['primary_email'].ljust(30)} - {student['time_zone'].ljust(15)[:15]} ")
     except requests.exceptions.RequestException as e:
         # Handle any HTTP or connection errors
-        print(f"    - {name} has dropped the course")
+        print(f"{color[courseId]}    - {name} has dropped the course")
 
