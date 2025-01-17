@@ -14,6 +14,9 @@ def listTeamMembers():
                 for member in members:
                     canvas.showStudent(member['id'], member["name"])
                 print(f"{len(members)} - unassigned")
+                if input("Email the Unassigned?: ") == 'y':
+                    studentIds = [student['id'] for student in members]
+                    canvas.sendMessage(studentIds, "You have not yet found a team", "Please identify a team that works for your schedule and add your name to the group")
             else:
                 # if we want the group membership this is the place
                 groups = canvas.getGroups(course['id'])
@@ -22,7 +25,7 @@ def listTeamMembers():
                         continue
 
                     if (group['members_count'] == 1 and grpType == "1") or grpType == "0":
-                        cnt = canvas.listMembers(group) + cnt
+                        cnt = canvas.listMembers(group, grpType) + cnt
                 print(f"Members: {cnt}")
         grpType = input("(1) Solo, (0) All, (u) Unassigned: ")
 

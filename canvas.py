@@ -207,7 +207,7 @@ def getUnassigned(groupId):
 def getUnfinishedAssignments(courseId):
     students    = getStudents(courseId)
     assignments = getAssignments(courseId)
-    studentAssignments = {student['id']: {"name": student['name'], "unsubmitted": []} for student in students}
+    studentAssignments = {student['id']: {"name": student['name'], "email": student["email"], "unsubmitted": []} for student in students}
 
     for assignment in assignments:
         dueDate = assignment.get('due_at')
@@ -225,11 +225,16 @@ def getUnfinishedAssignments(courseId):
     return studentAssignments
 
 # traverse from the categories in a course to the groups to the members
-def listMembers(group):
+def listMembers(group, grpType):
     print(f"{group['name']} # in Group: {group['members_count']} ")
     members = getGroupMembers(group['id'])
     for member in members:
         showStudent(member['id'], member["name"])
+    if len(members) == 1 and grpType == "1":
+        if input("Email Lonely People?: ") == 'y':
+            studentIds = [student['id'] for student in members]
+            sendMessage(studentIds, "You are currently the only member of the team", 
+                                "Please identify a team that has others enrolled already that works for your schedule and add your name to the group")
     return len(members)
 
 def deleteAnnouncements(courseId, topicId):
@@ -248,3 +253,14 @@ def showStudent(studentId, name):
         # Handle any HTTP or connection errors
         print(f"{color[courseId]}    - {name} has dropped the course")
 
+def sendMessage(studentId, subject, body):
+    payload = {
+        "recipients": studentId,
+        "subject": subject,
+        "body": f"{body}",
+        "context_code": f"course_{courseId}",
+        "bulk_message": True
+    }
+    print(f"To: {studentId}\n{subject}\n{body}")
+    # response = requests.post(f"{canvasURL}/conversations", headers=headers, json=payload )
+    # return response.json()
