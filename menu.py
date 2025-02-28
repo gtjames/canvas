@@ -1,49 +1,63 @@
-import  listAnnouncements
-import  listGroups
-import  nameGroups
-import  canvas
+from  nameGroups import renameGroups
+from  canvas import courseId, test, setParams, clearCache, getStudents, listAnnouncements, reviewUnsubmitted, sendStatusLetters, sendMessage, setColor, listTeamMembers, studentInTeam, studentsInClass
 
 def main():
+    setParams()
     while True:
-        print("\n\033[0mMain Menu")
-        # print("0. Student Roster")
+        print("\n\x1B[0mMain Menu")
+        print("0. Student Roster")
         print("1. Team Status")
         print("2. Students in Team")
         print("3. Review Unsubmitted")
         print("4. Delete old Announcements")
-        # print("5. Rename Groups")
+        print("5. Rename Groups")
         print("6. Clear Cache")
         print("7. Set Colors")
-        print("9. Exit")
+        print("8. Send Missing Assignment Letters")
+        print("9. Send Letter to 1 student")
+        print("10. Send Letters to a Class")
+        print("11. Set School and Class")
+        print("E(x)it")
         
         choice = input("Enter your choice: ")
-        if choice == '9':
-            exit()
-        elif len(choice) > 2:
-            choice, canvas.school, canvas.courseId  = choice.split(" ")
-            canvas.setSchool(canvas.school)
-            if canvas.courseId not in canvas.color:
-                canvas.setColor(4)
-        else:
-            canvas.setParams()
 
-        # if choice == '0':
-        #     canvas.studentRoster()
-        if choice == '1':
-            listGroups.listTeamMembers()
-        elif choice == '2':
-            listGroups.studentInTeam()
-        elif choice == '3':
-            listAnnouncements.reviewUnsubmitted()
-        elif choice == '4':
-            listAnnouncements.listAnnouncements()
-        # elif choice == '5':
-        #     nameGroups.nameGroups()
-        elif choice == '6':
-            canvas.clearCache()
-        elif choice == '7':
-            canvas.setColor(input("Enter 0-8: "))
-        else:
-            print("Invalid choice, please try again.")
+        match choice:
+            case 'x':
+                exit()
+            case '0':
+                studentsInClass()
+            case '1':
+                listTeamMembers()
+            case '2':
+                studentInTeam()
+            case '3':
+                reviewUnsubmitted()
+            case '4':
+                listAnnouncements()
+            case '5':
+                renameGroups()
+            case '6':
+                clearCache()
+            case '7':
+                setColor(input("Enter 0-8: "))
+            case '8':
+                sendStatusLetters();
+            case '9':
+                studentId = input("Student Id: ")
+                subject   = input("Subject: ")
+                body      = input("Body: ")
+                sendMessage([studentId], subject, body)
+            case '10':
+                studentList = getStudents(courseId)
+                studentIds = [student['id'] for student in studentList]
+                subject   = input("Subject: ")
+                body      = input("Body: ")
+                sendMessage(studentIds, subject, body)
+            case '11':
+                setParams()
+            case '12':
+                test()
+            case "_":
+                print("Invalid choice, please try again.")
 
 main()
