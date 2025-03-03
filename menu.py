@@ -4,7 +4,7 @@ from  canvas import courseId, test, setParams, clearCache, getStudents, listAnno
 def main():
     setParams()
     while True:
-        print("\n\x1B[0mMain Menu")
+        print("\nMain Menu")
         print("0. Student Roster")
         print("1. Team Status")
         print("2. Students in Team")

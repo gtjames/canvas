@@ -8,11 +8,13 @@ def renameGroups():
             " 1 AM UTC --  6 PM Mtn",  " 3 AM UTC --  8 PM Mtn",
             ]
 
-    courses = canvas.getCategories(canvas.courseId)
+    categories = canvas.getCategories(canvas.courseId)
 
-    for course in courses:
-        print(f"{course['name']}")
-        groups = canvas.getGroups(course['id'])
+    for category in categories:
+        print(f"{category.get('name')}")
+        groups = canvas.getGroups(category['id'])
+        if len(groups) == 1:
+            continue
 
         grpNum  = 0
         teamNum = 0
@@ -22,15 +24,17 @@ def renameGroups():
             print(f"{group['name']}")
             if first:
                 teamName = "People Dropping the Class",
-                first = False
             else:
-                teamName = f"Team {teamNum:02d} WDD330 {"Tuesday" if grpNum < 8 else "Thursday"} {times[grpNum%8]} "
+                teamName = f"Team {teamNum:02d} WDD330 {"Tuesday" if grpNum < 8 else "Wednesday"} {times[grpNum%8]} "
             
             print(teamName)
 
             data = { "name": teamName, "max_membership": 6 }
             requests.put(f"{canvas.canvasURL}/groups/{group["id"]}", headers=canvas.headers, data=data)
 
+            if first:
+                first = False
+                continue
             grpNum=grpNum+1
             teamNum=teamNum+1
             if teamNum == 8:

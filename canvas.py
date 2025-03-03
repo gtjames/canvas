@@ -56,19 +56,16 @@ def setParams():
 
     school   = input("Enter School: ")
     courseId = input("Enter Course: ")
+    school   = "byupw" if school   == "" else school
+    courseId = "7113"  if courseId == "" else courseId
+
     setSchool(school)
     return courseId
 
 # Canvas API details
-def setSchool(schoolId):
-    global school
+def setSchool(school):
     global canvasURL
     global headers
-
-    if (schoolId == ""):
-        school = "byupw"
-    else:
-        school = schoolId
 
     canvasURL = f"https://{school}.instructure.com/api/v1"
 
@@ -178,13 +175,12 @@ def listTeamMembers():
         grpType = input("(1) Solo, (0) All, (u) Unassigned: ")
 
 def studentInTeam():
-    print(f"{color[courseId]} studentInTeam")
     students=[]
-    courses = getCategories(courseId)
+    categories = getCategories(courseId)
     # studentsInCourse = getStudents(courseId)    ATTN:  remember this
 
-    for course in courses:
-        groups = getGroups(course['id'])
+    for category in categories:
+        groups = getGroups(category['id'])
         for group in groups:
             if group['members_count'] == 0:
                 continue
@@ -196,7 +192,8 @@ def studentInTeam():
                 lastName = lastName.ljust(15)[:15]
                 student = getStudent(member["id"])
                 lastLogin = getLastLogin(member["id"])
-
+                lastLogin = lastLogin if lastLogin else "_____TNever";
+                
                 students.append({
                     "name":     member["name"], 
                     "first":    firstName,
@@ -271,7 +268,7 @@ def getGroups(catId):
     global _groups
 
     if catId not in _groups:
-        response = requests.get( f"{canvasURL}/group_categories/{catId}/groups?per_page=20", headers=headers )
+        response = requests.get( f"{canvasURL}/group_categories/{catId}/groups?per_page=70", headers=headers )
         _groups[catId] = response.json()
     return _groups[catId]
 
@@ -280,7 +277,7 @@ def getGroupMembers(groupId):
     global _groupMembers
 
     if groupId not in _groupMembers:
-        response = requests.get( f"{canvasURL}/groups/{groupId}/users", headers=headers )
+        response = requests.get( f"{canvasURL}/groups/{groupId}/users?per_page=70", headers=headers )
         _groupMembers[groupId] = response.json()
     return _groupMembers[groupId]
 
@@ -290,7 +287,7 @@ def getUnassigned(groupId):
 
     if groupId not in _unassigned:
         params = { "per_page": 100 }  # Maximum allowed per page 
-        response = requests.get( f"{canvasURL}/group_categories/{groupId}/users?unassigned=true", headers=headers, params=params )
+        response = requests.get( f"{canvasURL}/group_categories/{groupId}/users?unassigned=true&per_page=20", headers=headers, params=params )
         _unassigned[groupId] = response.json()
     return _unassigned[groupId]
 

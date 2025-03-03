@@ -2,12 +2,18 @@ import requests
 import canvas as c
 
 def sortByAttr(data, attribute):
+    # Use sorted with the attribute as the key
     try:
-        # Use sorted with the attribute as the key
-        return sorted(data, key=lambda item: item[attribute])
+        return sorted(data, key=lambda item: normalize_value(item.get(attribute, "")))
     except KeyError:
         print(f"Invalid attribute: {attribute}")
         return data
+
+def normalize_value(value):
+    """Convert value to lowercase if string, or keep number values intact."""
+    if isinstance(value, str):
+        return value.lower()  # Case-insensitive sorting
+    return value  # Numbers remain unchanged
 
 def sendMessage(studentId, subject, body):
     payload = {
