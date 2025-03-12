@@ -1,7 +1,8 @@
+import sys
 import requests
 import json
 from utilities import sendMessage, sortByAttr, getCanvasData
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 school   = ""
 courseId  = ""
@@ -53,9 +54,11 @@ def setColor(rgb):
 def setParams():
     global school
     global courseId
-
-    school   = input("Enter School: ")
-    courseId = input("Enter Course: ")
+    if (len(school) == 0 and len(sys.argv) > 1):
+        courseId = sys.argv[1]
+    else:
+        school   = input("Enter School: ")
+        courseId = input("Enter Course: ")
     school   = "byupw" if school   == "" else school
     courseId = "7113"  if courseId == "" else courseId
 
@@ -83,7 +86,6 @@ def getAnnouncements(courseId):
     return _announcements[courseId]
 
 def listAnnouncements():
-    print(f"{color[courseId]}")
     announcements = getAnnouncements(courseId)
     for announcement in announcements:
         print(f"{announcement['id']}  {announcement['title']}")
@@ -147,15 +149,17 @@ def getScores():
     return _scores[courseId]
 
 def listTeamMembers():
+    categories = getCategories(courseId)
     grpType = input("(1) Solo, (0) All, (u) Unassigned: ")
     while len(grpType) > 0:
         cnt = 0;
-        courses = getCategories(courseId)
-        for course in courses:
-            print(f"{course['name']}")
+        for category in categories:
+            if category['name'] == "Who is Here":
+                continue
+            print(f"{category['name']}")
             # if we are only interestin 'U'nassigned this is the route to take
             if grpType == "u":
-                members = getUnassigned(course['id'])
+                members = getUnassigned(category['id'])
                 for member in members:
                     showStudent(member['id'], member["name"])
                 print(f"{len(members)} - unassigned")
@@ -164,7 +168,7 @@ def listTeamMembers():
                     sendMessage(studentIds, "You have not yet found a team", "Please identify a team that works for your schedule and add your name to the group")
             else:
                 # if we want the group membership this is the place
-                groups = getGroups(course['id'])
+                groups = getGroups(category['id'])
                 for group in groups:
                     if group['members_count'] == 0:
                         continue
@@ -177,9 +181,11 @@ def listTeamMembers():
 def studentInTeam():
     students=[]
     categories = getCategories(courseId)
-    # studentsInCourse = getStudents(courseId)    ATTN:  remember this
+    studentsInCourse = getStudents(courseId)
 
     for category in categories:
+        if category['name'] == "Who is Here":
+            continue
         groups = getGroups(category['id'])
         for group in groups:
             if group['members_count'] == 0:
@@ -192,32 +198,68 @@ def studentInTeam():
                 lastName = lastName.ljust(15)[:15]
                 student = getStudent(member["id"])
                 lastLogin = getLastLogin(member["id"])
-                lastLogin = lastLogin if lastLogin else "_____TNever";
+                lastLogin = lastLogin if lastLogin else "_____TUnknown";
                 
                 students.append({
-                    "name":     member["name"], 
-                    "first":    firstName,
-                    "last":     lastName, 
-                    "id":       member["id"], 
-                    "login":    lastLogin.replace('T', ' ')[5:16], 
-                    "group":    group["name"][:7], 
-                    "email":    student['primary_email'].ljust(30), 
-                    "tz":       student['time_zone'].ljust(15)[:15]})
-    sortBy = input("Sort By (first, last, group, login, email, id): ")
+                    "first":     firstName,
+                    "last":      lastName, 
+                    "id":        member["id"], 
+                    "lastLogin": lastLogin,
+                    "login":     lastLogin.replace('T', ' ')[5:16], 
+                    "group":     group["name"][:7], 
+                    "email":     student['primary_email'].ljust(30), 
+                    "tz":        student['time_zone'].ljust(15)[:15]})
+
+    mergeStudents(students, studentsInCourse)
+    sortBy = input("Sort By (first, last, group, login, tz, email, id): ")
     group = ""
+    size = 0
     while len(sortBy) > 0:
         students = sortByAttr(students, sortBy)
         for student in students:
             if sortBy == "group":                       #   sorting by group
                 if group != student["group"]:           #   did the group change?
+                    if size > 0:                        #   if so, print the group size
+                        print(f"Members in Group {size}")
                     print(f"\t\t{student["group"]}")    #   print the group name
-                group = student["group"]                #   save current group
+                    group = student["group"]            #   save current group
+                    size = 0                            #   reset the group size
+                size += 1                               #   increment the group size
                 print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["tz"]}")
+            elif sortBy == "login":
+                    print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["login"]} : {student["id"]}");
+                    lastLogin = datetime.strptime(student["login"], '%m-%d %H:%M')   
+                    if lastLogin < datetime.now() - timedelta(days=7):
+                        if input("Email Non Participating?: ") == 'y':
+                            sendMessage([student["id"]], "You have not participated in the class this week",
+                                "Please let me know if you are having trouble with the class")
             elif sortBy == "id":
-                print(f"{student["id"]} : {student["first"]} {student["last"]} : {student["email"]}")
+                print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
+                print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["login"]} : {student["id"]}");
+            elif sortBy == "id":
+                print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
+            elif sortBy == "first" or sortBy == "tz":
+                print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["group"]} : {student["tz"]}")
             else:
-                print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["tz"]}")
+                print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
         sortBy = input("Sort By (first, last, group, login, tz, email, id): ")
+
+def mergeStudents(students, studentsInCourse):
+    # Create a set of student IDs already in the students list
+    student_ids = {student['id'] for student in students}
+
+    # Iterate through studentsInCourse and add missing entries to students
+    for student in studentsInCourse:
+        if student['id'] not in student_ids:
+            lastName, rest = student['sortable_name'].split(", ")
+            firstName = rest.split(" ")[0].ljust(10)[:10]
+            lastName = lastName.ljust(15)[:15]
+            students.append({
+                "id": student['id'], "email": student['email'].ljust(30),
+                "first": firstName, "last": lastName,
+                "login": "Unknown", "group": "Not Yet", "tz": "Unknown"})
+
+    return students
 
 def studentsInClass():
     students=[]
@@ -303,7 +345,7 @@ def getCategories(courseId):
 def sendStatusLetters():
     status = getScores()
     unfinishedAssignments = getUnfinishedAssignments(courseId)
-    statusLetter(status, 90, 100, unfinishedAssignments,
+    statusLetter(status, 90, 101, unfinishedAssignments,
                  "Keep up the good work!: Current Score: ",
                 "\nYou are doing very well in the class keep up the good work")
     statusLetter(status, 70, 90, unfinishedAssignments,
@@ -314,12 +356,12 @@ def sendStatusLetters():
                 "\nHere is a list of your missing assignments. You can still turn these in until the end of week four\nDon't forget there is tutoring available for the class.")
 
 def statusLetter(status, lo, hi, unfinishedAssignments, subject, body):
-    list = [ student for student in status if lo <  int(student["currentScore"]) < hi ]
+    list = [ student for student in status if lo <= int(student["currentScore"] or 0) < hi ]
 
     go = input("go/no go? ")
 
     for s in list:
-        print(f"{s.get('name')} - {s.get('currentScore')}")
+        print(f"{s.get('currentScore', 0):6.1f} - {s.get('name')}")
         if go != 'go':
             continue
 
@@ -328,7 +370,7 @@ def statusLetter(status, lo, hi, unfinishedAssignments, subject, body):
         sendMessage([s['id']],  f"{subject} {s.get('currentScore')}",
                                 f"\n{s.get('firstName')},\n{body}\nMissing Assignments(if any)\n\t{missed}\n\nBro. James")
 
-def reviewUnsubmitted():
+def listUnsubmitted():
     unfinishedAssignments = getUnfinishedAssignments(courseId)
     studentIds = set()
 
@@ -367,12 +409,12 @@ def getUnfinishedAssignments(courseId):
         for student in students}
 
     for assignment in assignments:
-        dueDate = assignment.get('due_at')
-        if dueDate:
-            dueDate = datetime.fromisoformat(dueDate.replace('Z', '+00:00'))
+        dueDateStr = assignment.get('due_at')
+        if dueDateStr:
+            dueDate = datetime.fromisoformat(dueDateStr.replace('Z', '+00:00'))
             # Skip assignments that aren't past due
             if dueDate > datetime.now(timezone.utc):
-                print(f"Not due yet: {assignment['name']} : {dueDate}")
+                print(f"Not due yet: {dueDateStr.split('T')[0]} : {assignment['name']}")
                 continue
 
         submissions = getSubmissionByStatus(courseId, assignment['id'], 'unsubmitted')
@@ -394,17 +436,6 @@ def getSubmissionByStatus(courseId, assignmentId, state):
     return [s for s in _submissionByStatus[assignmentId] if s['missing'] == True]
 
 
-# def studentRoster():
-#     students = getStudents(courseId)
-#     sortBy = input(f"{color['reset']}Sort By (name, email): ")
-#     while len(sortBy) > 0:
-#         students = sortByAttr(students, sortBy)
-
-#         for student in students:
-#             showStudent(student['id'], student["name"])
-#         print(f"{color[courseId]}# Enrolled: {len(students)}")
-#         sortBy = input(f"{color['reset']}Sort By (name, email): ")
-
 # # Get Total Activity Time
 # def getTotalActivityTime(studentId):
 #     response = requests.get(f"{canvasURL}/courses/{courseId}/users/{studentId}", headers=headers)
@@ -412,16 +443,3 @@ def getSubmissionByStatus(courseId, assignmentId, state):
 #     activityTime = stats.get("total_activity_time", "N/A")
 #     return activityTime
 # # total_activity_time = analytics_data.get("total_activity_time", "N/A")
-
-# def deleteAnnouncements(courseId, topicId):
-#     response = requests.delete(f"{canvasURL}/courses/{courseId}/discussion_topics/{topicId}", headers=headers)
-#     return response.json()
-def test():
-    try:
-        # /api/v1/conversations
-        response = requests.get( f"{canvasURL}/conversations?&per_page=20", headers=headers )
-        resp = response.json()
-        print(f"{resp}")
-    except requests.exceptions.RequestException as e:
-        # Handle any HTTP or connection errors
-        print(f"{e}")

@@ -1,29 +1,23 @@
-from  nameGroups import renameGroups
-from  canvas import courseId, test, setParams, clearCache, getStudents, listAnnouncements, reviewUnsubmitted, sendStatusLetters, sendMessage, setColor, listTeamMembers, studentInTeam, studentsInClass
+# from  nameGroups import renameGroups
+from  canvas import courseId, studentsInClass, setParams, getStudents, listUnsubmitted, sendStatusLetters, sendMessage, listTeamMembers, studentInTeam
 
 def main():
+
+# Print all command-line arguments
     setParams()
     while True:
         print("\nMain Menu")
-        print("0. Student Roster")
-        print("1. Team Status")
-        print("2. Students in Team")
-        print("3. Review Unsubmitted")
-        print("4. Delete old Announcements")
-        print("5. Rename Groups")
-        print("6. Clear Cache")
-        print("7. Set Colors")
-        print("8. Send Missing Assignment Letters")
-        print("9. Send Letter to 1 student")
-        print("10. Send Letters to a Class")
-        print("11. Set School and Class")
+        print("0.  Students in Class  1. Team Members       2. Students in Team")
+        print("3.  List Unsubmitted   4. Missing Assignment Letters")
+        print("5.  Message 1 student  6. Message Class")
+        print("10. Set School and Class")
         print("E(x)it")
+
+        # print("5. Rename Groups")
         
         choice = input("Enter your choice: ")
 
         match choice:
-            case 'x':
-                exit()
             case '0':
                 studentsInClass()
             case '1':
@@ -31,32 +25,27 @@ def main():
             case '2':
                 studentInTeam()
             case '3':
-                reviewUnsubmitted()
+                listUnsubmitted()
             case '4':
-                listAnnouncements()
-            case '5':
-                renameGroups()
-            case '6':
-                clearCache()
-            case '7':
-                setColor(input("Enter 0-8: "))
-            case '8':
                 sendStatusLetters();
-            case '9':
+            case '5':
                 studentId = input("Student Id: ")
                 subject   = input("Subject: ")
                 body      = input("Body: ")
                 sendMessage([studentId], subject, body)
-            case '10':
+            case '6':
                 studentList = getStudents(courseId)
                 studentIds = [student['id'] for student in studentList]
                 subject   = input("Subject: ")
                 body      = input("Body: ")
                 sendMessage(studentIds, subject, body)
-            case '11':
+
+            # case '5':
+            #     renameGroups()
+            case '10':
                 setParams()
-            case '12':
-                test()
+            case 'x':
+                exit()
             case "_":
                 print("Invalid choice, please try again.")
 
