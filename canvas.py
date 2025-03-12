@@ -195,14 +195,13 @@ def studentInTeam():
             for member in members:
                 lastName, rest = member['sortable_name'].split(", ")
                 firstName = rest.split(" ")[0].ljust(10)[:10]
-                lastName = lastName.ljust(15)[:15]
                 student = getStudent(member["id"])
                 lastLogin = getLastLogin(member["id"])
-                lastLogin = lastLogin if lastLogin else "_____TUnknown";
+                lastLogin = lastLogin if lastLogin else "2025-01-01T01:00:00-06:00"
                 
                 students.append({
                     "first":     firstName,
-                    "last":      lastName, 
+                    "last":      lastName.ljust(15)[:15], 
                     "id":        member["id"], 
                     "lastLogin": lastLogin,
                     "login":     lastLogin.replace('T', ' ')[5:16], 
@@ -211,8 +210,12 @@ def studentInTeam():
                     "tz":        student['time_zone'].ljust(15)[:15]})
 
     mergeStudents(students, studentsInCourse)
-    sortBy = input("Sort By (first, last, group, login, tz, email, id): ")
+    notifyNoneParticipating = False
+    if input("Email Non Participating?: ") == 'y':
+        notifyNoneParticipating = True
+
     group = ""
+    sortBy = input("Sort By (first, last, group, login, tz, email, id): ")
     size = 0
     while len(sortBy) > 0:
         students = sortByAttr(students, sortBy)
@@ -228,13 +231,12 @@ def studentInTeam():
                 print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["tz"]}")
             elif sortBy == "login":
                     print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["login"]} : {student["id"]}");
-                    lastLogin = datetime.strptime(student["login"], '%m-%d %H:%M')   
-                    if lastLogin < datetime.now() - timedelta(days=7):
-                        if input("Email Non Participating?: ") == 'y':
-                            sendMessage([student["id"]], "You have not participated in the class this week",
-                                "Please let me know if you are having trouble with the class")
+                    lastLogin = datetime.fromisoformat(student["lastLogin"])
+                    aWeekAgo = datetime.now(lastLogin.tzinfo) - timedelta(days=7)
+                    if lastLogin < aWeekAgo and notifyNoneParticipating:
+                        sendMessage([student["id"]], "You have not participated in the class this week",
+                            "Please let me know if you are having trouble with the class")
             elif sortBy == "id":
-                print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
                 print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["login"]} : {student["id"]}");
             elif sortBy == "id":
                 print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
@@ -257,7 +259,8 @@ def mergeStudents(students, studentsInCourse):
             students.append({
                 "id": student['id'], "email": student['email'].ljust(30),
                 "first": firstName, "last": lastName,
-                "login": "Unknown", "group": "Not Yet", "tz": "Unknown"})
+                "login": "01-01 00:00", "lastLogin": "2025-01-01T01:00:00-06:00",
+                "group": "Not Yet", "tz": "Unknown"})
 
     return students
 
@@ -281,10 +284,7 @@ def studentsInClass():
     while len(sortBy) > 0:
         students = sortByAttr(students, sortBy)
         for student in students:
-            if sortBy == "id":
-                print(f"{student["first"]} {student["last"]} : {student["id"]}")
-            else:
-                print(f"{student["first"]} {student["last"]} : {student["email"]}")
+            print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
         sortBy = input("Sort By (first, last, email, id): ")
 
 # traverse from the categories in a course to the groups to the members
