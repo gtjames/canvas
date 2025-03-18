@@ -230,7 +230,7 @@ def studentInTeam():
                 size += 1                               #   increment the group size
                 print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["tz"]}")
             elif sortBy == "login":
-                    print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["login"]} : {student["id"]}");
+                    print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["group"]}");
                     lastLogin = datetime.fromisoformat(student["lastLogin"])
                     aWeekAgo = datetime.now(lastLogin.tzinfo) - timedelta(days=7)
                     if lastLogin < aWeekAgo and notifyNoneParticipating:
@@ -238,8 +238,6 @@ def studentInTeam():
                             "Please let me know if you are having trouble with the class")
             elif sortBy == "id":
                 print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["login"]} : {student["id"]}");
-            elif sortBy == "id":
-                print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
             elif sortBy == "first" or sortBy == "tz":
                 print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["group"]} : {student["tz"]}")
             else:
@@ -260,7 +258,7 @@ def mergeStudents(students, studentsInCourse):
                 "id": student['id'], "email": student['email'].ljust(30),
                 "first": firstName, "last": lastName,
                 "login": "01-01 00:00", "lastLogin": "2025-01-01T01:00:00-06:00",
-                "group": "Not Yet", "tz": "Unknown"})
+                "group": "_______", "tz": "_______"})
 
     return students
 
