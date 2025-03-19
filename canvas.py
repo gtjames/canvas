@@ -359,8 +359,10 @@ def statusLetter(status, lo, hi, unfinishedAssignments, subject, body):
     go = input("go/no go? ")
 
     for s in list:
-        print(f"{s.get('currentScore', 0):6.1f} - {s.get('name')}")
-        if go != 'go':
+        print(f"{s.get('currentScore', 0):6.1f} - {s.get('name')} {" dropped" if s.get('id') not in unfinishedAssignments else ""}")
+
+        # Check if the student ID is in the unfinishedAssignments dictionary
+        if s.get('id') not in unfinishedAssignments or go != 'go':
             continue
 
         missed = "\n\t".join(map(str,unfinishedAssignments[s.get('id')].get('unsubmitted')))
@@ -374,7 +376,7 @@ def listUnsubmitted():
 
     notify = input("Notify?: ")
     msg = input("Message?: ")
-    msg = msg if msg else "\tThe Following assignments have not been submitted.\n\tThese can all be submitted up to the end of this week (Week 4)"
+    msg = msg if msg else "\tThe Following assignments have not been submitted.\n\tThese can all be submitted up to the end of Week 4."
 
     for studentId, info in unfinishedAssignments.items():
         if info['unsubmitted']:
