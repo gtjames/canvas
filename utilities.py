@@ -10,10 +10,20 @@ def sortByAttr(data, attribute):
         return data
 
 def normalize_value(value):
-    """Convert value to lowercase if string, or keep number values intact."""
-    if isinstance(value, str):
-        return value.lower()  # Case-insensitive sorting
-    return value  # Numbers remain unchanged
+    """Convert values to a common type for comparison."""
+    if isinstance(value, (int, float)):
+        return value
+    elif isinstance(value, str):
+        try:
+            # Attempt to convert to a number if possible
+            num_value = float(value)
+            return num_value if "." in value else int(num_value)
+        except ValueError:
+            # If not a number, return lowercase string for consistent sorting
+            return value.lower()
+    return value  # Return as-is for other types
+
+
 
 def sendMessage(studentId, subject, body):
     payload = {

@@ -1,10 +1,11 @@
 # from  nameGroups import renameGroups
-from  canvas import courseId, studentsInClass, setParams, getStudents, listUnsubmitted, sendStatusLetters, sendMessage, listTeamMembers, studentInTeam
+from  canvas import startUp, courseId, studentsInClass, setParams, getStudents, listUnsubmitted, sendStatusLetters, sendMessage, listTeamMembers, studentInTeam
 
 def main():
 
 # Print all command-line arguments
     setParams()
+    startUp();
     while True:
         print("\nMain Menu")
         print("0.  Students in Class  1. Team Members       2. Students in Team")
