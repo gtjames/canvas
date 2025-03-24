@@ -37,5 +37,10 @@ def sendMessage(studentId, subject, body):
     return response.json()
 
 def getCanvasData(url, params={}):
-    response = requests.get(url, headers=c.headers, params=params)
-    return response.json()
+    try:
+        response = requests.get(url, headers=c.headers, params=params)
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        # Handle any HTTP or connection errors
+        print(f"    - {e}")
+        return {}

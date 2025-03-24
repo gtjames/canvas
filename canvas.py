@@ -16,7 +16,6 @@ _enrollments   = {}         #   the whole works which we do not need
 _groupMembers  = {}
 _groups        = {}
 _lastLogin     = {}
-_studentEnrollment  = {}    #   just the few details we need
 _students      = {}
 _submissionByStatus = {}
 _unassigned    = {}
@@ -29,7 +28,6 @@ def clearCache():
     global _groupMembers
     global _groups
     global _lastLogin
-    global _studentEnrollment
     global _students
     global _submissionByStatus
     global _unassigned
@@ -41,7 +39,6 @@ def clearCache():
     _groupMembers = {}
     _groups = {}
     _lastLogin = {}
-    _studentEnrollment  = {}
     _students = {}
     _submissionByStatus = {}
     _unassigned = {}
@@ -102,8 +99,8 @@ def getAssignments(courseId):
     global _assignments
     
     if courseId not in _assignments:
-        response = requests.get(f"{canvasURL}/courses/{courseId}/assignments", headers=headers, params={"per_page": 100})
-        _assignments[courseId] = response.json()
+        _assignments[courseId] = getCanvasData(f"{canvasURL}/courses/{courseId}/assignments", params={"per_page": 100})
+
     return _assignments[courseId]
 
 def getStudents(courseId):
@@ -114,9 +111,11 @@ def getStudents(courseId):
             "enrollment_type[]": "student",
             "per_page": 100,  # Maximum allowed per page
         }
-        response = requests.get(f"{canvasURL}/courses/{courseId}/users", headers=headers, params=params)
-        _students[courseId] = response.json()
+        _students[courseId] = getCanvasData(f"{canvasURL}/courses/{courseId}/users", params=params)
+
         for student in _students[courseId]:
+            profile = getStudentProfile(student['id'])
+
             lastName, rest = student['sortable_name'].split(", ")
             firstName = rest.split(" ")[0].ljust(10)[:10]
             student['first'] = firstName.ljust(10)[:10]
@@ -125,28 +124,31 @@ def getStudents(courseId):
             student['group'] = "Team XX"
             student['lastLogin'] = "2025-01-01T01:00:00-06:00"
             student['login'] = "01-01 01:00"
+            student['lastActivity'] = "25-01-01 01:00"
             student['score'] = 0
-            student['grade'] = 'F'
-            student['tz']    = "Not Set"
+            student['grade'] = '_'
+            student['tz']    = profile['time_zone']
             student['activityTime'] = 0
     return _students[courseId]
 
-def getStudent(studentId):
+def getStudentProfile(studentId):
+    return getCanvasData(f"{canvasURL}/users/{studentId}/profile")
+
+def getStudent(courseId, studentId):
     global _students
 
-    if studentId not in _students:
-        response = requests.get( f"{canvasURL}/users/{studentId}/profile", headers=headers )
-        _students[studentId] = response.json()
-    return _students[studentId]
+    studentRec = next((student for student in _students[courseId] if int(student["id"]) == studentId), None)
+    if studentRec == None:
+        print(f"    - {studentId} not found")
+        studentRec = getStudentProfile(studentId)
+        _students[courseId].append(studentRec)
+    return studentRec
 
 # Get details on a student
 def showStudent(studentId, name):
     try:
-        student = getStudent(studentId)
-        # Get the last and first names
-        lastName, rest = student['sortable_name'].split(", ")
-        firstName = rest.split(" ")[0]
-        print(f"    - {firstName.ljust(10)[:10]} {lastName.ljust(15)} {student['primary_email'].ljust(30)} - {student['time_zone'].ljust(15)[:15]} ")
+        student = getStudent(courseId, studentId)
+        print(f"    - {student['first']} {student['last']} {student['email']} - {student['tz']} ")
     except requests.exceptions.RequestException as e:
         # Handle any HTTP or connection errors
         print(f"    - {name} has dropped the course")
@@ -158,8 +160,7 @@ def getCategories(courseId):
     studentList = getStudents(courseId)
 
     if courseId not in _categories:
-        response = requests.get( f"{canvasURL}/courses/{courseId}/group_categories", headers=headers )
-        _categories[courseId] = response.json()
+        _categories[courseId] = getCanvasData(f"{canvasURL}/courses/{courseId}/group_categories")
 
         for category in _categories[courseId]:
             if category['name'] == "Who is Here":
@@ -171,8 +172,8 @@ def getCategories(courseId):
 
                 members = getGroupMembers(0+group['id'])
                 for member in members:
-                    student   = getStudent(member["id"])
-                    tz = student['time_zone'].ljust(15)[:15]
+                    student   = getStudent(courseId, member["id"])
+                    tz = student['tz']
                     lastLogin = getLastLogin(member["id"])
                     lastLogin = lastLogin if lastLogin else "2025-01-01T01:00:00-06:00"
                     
@@ -191,9 +192,7 @@ def getUnassigned(groupId):
     global _unassigned
 
     if groupId not in _unassigned:
-        params = { "per_page": 100 }  # Maximum allowed per page 
-        response = requests.get( f"{canvasURL}/group_categories/{groupId}/users?unassigned=true&per_page=20", headers=headers, params=params )
-        _unassigned[groupId] = response.json()
+        _unassigned[groupId] = getCanvasData(f"{canvasURL}/group_categories/{groupId}/users", params={"unassigned":True, "per_page": 100})
     return _unassigned[groupId]
 
 def listTeamMembers():
@@ -229,33 +228,29 @@ def listTeamMembers():
 # Get Last Login
 def getEnrollments(courseId, studentList):
     global _enrollments
-    global _studentEnrollment
 
     if courseId not in _enrollments:
-        response = requests.get(f"{canvasURL}/courses/{courseId}/enrollments?type[]=StudentEnrollment", headers=headers, params={"per_page": 100})
-
-        _enrollments[courseId] = response.json()
-        
-        _studentEnrollment = {}
-        _studentEnrollment[courseId] = {
+        _enrollments[courseId] = getCanvasData(f"{canvasURL}/courses/{courseId}/enrollments?type[]=StudentEnrollment", params={"per_page": 100}) 
+        tmp = {
             student['user_id']: {
-                "lastActivity": student['last_activity_at'],
-                "activityTime": student['total_activity_time'],
-                "grade":        student['grades']['current_grade'],
-                "score":        student['grades']['current_score'],
-        } 
-        for student in _enrollments[courseId]}
+                "lastActivity": f"{student['last_activity_at'].replace('T', ' ')[5:16]}",
+                "activityTime":    student['total_activity_time'],
+                "grade"       : f"{student['grades']['current_grade'].ljust(2)}",
+                "score"       :    student['grades']['current_score'],
+        } for student in _enrollments[courseId]}
 
             # Merge data by adding enrollment details to matching students
         for student in studentList:
-            id = student.get('id')
-            if id in _studentEnrollment[courseId]:
-                student["lastActivity"] = _studentEnrollment[courseId][id]["lastActivity"]
-                student["activityTime"] = _studentEnrollment[courseId][id]["activityTime"]
-                student["grade"]        = _studentEnrollment[courseId][id]["grade"]
-                student["score"]        = _studentEnrollment[courseId][id]["score"]
+            id = student['id']
+            if id in tmp:
+                _st = tmp[id]
+                tm = _st["activityTime"]
+                student["lastActivity"] = _st["lastActivity"]
+                student["activityTime"] = f"{int(tm/60):5d}.{tm%60:02d}"
+                student["grade"]        = _st["grade"]
+                student["score"]        = _st["score"]
 
-    return _studentEnrollment[courseId]
+    return studentList
 
 def studentInTeam():
     studentList = getStudents(courseId)
@@ -267,7 +262,7 @@ def studentInTeam():
         notifyNoneParticipating = True
 
     group = ""
-    sortBy = input("Sort By (first, last, group, login, tz, email, id): ")
+    sortBy = input("Sort By (first, last, group, score, login, tz, email, id): ")
     size = 0
     while len(sortBy) > 0:
         students = sortByAttr(studentList, sortBy)
@@ -282,7 +277,7 @@ def studentInTeam():
                 size += 1                               #   increment the group size
                 print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["email"]} : {student["tz"]}")
             elif sortBy == "login":
-                print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["group"]} : {student["tz"]}");
+                print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["group"]} : {student["lastActivity"]}");
                 lastLogin = datetime.fromisoformat(student["lastLogin"])
                 aWeekAgo = datetime.now(lastLogin.tzinfo) - timedelta(days=7)
                 if lastLogin < aWeekAgo and notifyNoneParticipating:
@@ -291,12 +286,12 @@ def studentInTeam():
             elif sortBy == "id":
                 print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["email"]} : {student["id"]}");
             elif sortBy == "score":
-                print(f"{student["first"]} {student["last"]} : {student["score"]} : {student["grade"]} : {student["activityTime"]}");
+                print(f"{student["first"]} {student["last"]} : {student["score"]:-7.2f} : {student["grade"]} : {student["activityTime"]}");
             elif sortBy == "first" or sortBy == "tz":
                 print(f"{student["first"]} {student["last"]} : {student["group"]} : {student["email"]} : {student["tz"]}")
             else:
                 print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
-        sortBy = input("Sort By (first, last, group, login, tz, email, id): ")
+        sortBy = input("Sort By (first, last, group, score, login, tz, email, id): ")
 
 def studentsInClass():
     studentList = getStudents(courseId)
@@ -331,8 +326,8 @@ def getGroups(catId):
     global _groups
 
     if catId not in _groups:
-        response = requests.get( f"{canvasURL}/group_categories/{catId}/groups?per_page=70", headers=headers )
-        _groups[catId] = response.json()
+        _groups[catId] = getCanvasData(f"{canvasURL}/group_categories/{catId}/groups", params={"per_page": 100})
+
     return _groups[catId]
 
 # Get members in each group
@@ -340,12 +335,12 @@ def getGroupMembers(groupId):
     global _groupMembers
 
     if groupId not in _groupMembers:
-        response = requests.get( f"{canvasURL}/groups/{groupId}/users?per_page=70", headers=headers )
-        _groupMembers[groupId] = response.json()
+        _groupMembers[groupId] = getCanvasData(f"{canvasURL}/groups/{groupId}/users", params={"per_page": 100})
     return _groupMembers[groupId]
 
 def sendStatusLetters():
-    status = getEnrollments()
+    studentList = getStudents(courseId)
+    status = getEnrollments(courseId, studentList)
     unfinishedAssignments = getUnfinishedAssignments(courseId)
     statusLetter(status, 90, 101, unfinishedAssignments,
                  "Keep up the good work!: Current Score: ",
@@ -358,21 +353,21 @@ def sendStatusLetters():
                 "\nHere is a list of your missing assignments. You can still turn these in until the end of week four\nDon't forget there is tutoring available for the class.")
 
 def statusLetter(status, lo, hi, unfinishedAssignments, subject, body):
-    list = [ student for student in status if lo <= int(student["currentScore"] or 0) < hi ]
+    list = [ student for student in status   if lo <= student["score"] < hi ]
 
     go = input("go/no go? ")
 
     for s in list:
-        print(f"{s.get('currentScore', 0):6.1f} - {s.get('name')} {" dropped" if s.get('id') not in unfinishedAssignments else ""}")
+        print(f"{s['score']:6.1f} - {s['name']} {" dropped" if s['id'] not in unfinishedAssignments else ""}")
 
         # Check if the student ID is in the unfinishedAssignments dictionary
-        if s.get('id') not in unfinishedAssignments or go != 'go':
+        if s['id'] not in unfinishedAssignments or go != 'go':
             continue
 
-        missed = "\n\t".join(map(str,unfinishedAssignments[s.get('id')].get('unsubmitted')))
+        missed = "\n\t".join(map(str,unfinishedAssignments[s['id']]['unsubmitted']))
 
-        sendMessage([s['id']],  f"{subject} {s.get('currentScore')}",
-                                f"\n{s.get('firstName')},\n{body}\nMissing Assignments(if any)\n\t{missed}\n\nBro. James")
+        sendMessage([s['id']],  f"{subject} {s['score']}",
+                                f"\n{s['firstName']},\n{body}\nMissing Assignments(if any)\n\t{missed}\n\nBro. James")
 
 def listUnsubmitted():
     unfinishedAssignments = getUnfinishedAssignments(courseId)
@@ -389,7 +384,7 @@ def listUnsubmitted():
             for assignment in info['unsubmitted']:
                 print(f"    - {assignment}")
             if notify == "y":
-                missed = "\n\t".join(map(str,unfinishedAssignments[studentId].get('unsubmitted')))  # Convert each number to a string
+                missed = "\n\t".join(map(str,unfinishedAssignments[studentId]['unsubmitted']))  # Convert each number to a string
                 sendMessage([f"'{studentId}'"], "Missing Assignments", f"{msg}\n\n\t{missed}")
 
 # Get Last Login
@@ -397,9 +392,8 @@ def getLastLogin(studentId):
     global _lastLogin
 
     if studentId not in _lastLogin:
-        params = { "include[]": "last_login" }
-        response = requests.get(f"{canvasURL}/users/{studentId}", headers=headers, params=params)
-        _lastLogin[studentId] = response.json()
+        _lastLogin[studentId] = getCanvasData(f"{canvasURL}/users/{studentId}", params={ "include[]": "last_login" })
+
     return _lastLogin[studentId]["last_login"]
 
 def getUnfinishedAssignments(courseId):
@@ -413,7 +407,7 @@ def getUnfinishedAssignments(courseId):
         for student in students}
 
     for assignment in assignments:
-        dueDateStr = assignment.get('due_at')
+        dueDateStr = assignment['due_at']
         if dueDateStr:
             dueDate = datetime.fromisoformat(dueDateStr.replace('Z', '+00:00'))
             # Skip assignments that aren't past due
@@ -430,20 +424,8 @@ def getUnfinishedAssignments(courseId):
 
 def getSubmissionByStatus(courseId, assignmentId, state):
     global _submissionByStatus
-    print(f"getSubmissionByStatus\t{courseId} {assignmentId} {state}")
+    # print(f"getSubmissionByStatus\t{courseId} {assignmentId} {state}")
     if assignmentId not in _submissionByStatus:
-        response = requests.get(f"{canvasURL}/courses/{courseId}/assignments/{assignmentId}/submissions", headers=headers, params={"per_page": 100})
-        _submissionByStatus[assignmentId] = response.json()
-    # for s in _submissionByStatus[assignmentId]:
-    #     print(f"Not due yet: {s['id']} : {s['missing']}")
+        _submissionByStatus[assignmentId] = getCanvasData(f"{canvasURL}/courses/{courseId}/assignments/{assignmentId}/submissions", params={"per_page": 100})
 
     return [s for s in _submissionByStatus[assignmentId] if s['missing'] == True]
-
-
-# # Get Total Activity Time
-# def getTotalActivityTime(studentId):
-#     response = requests.get(f"{canvasURL}/courses/{courseId}/users/{studentId}", headers=headers)
-#     stats = response.json()
-#     activityTime = stats.get("total_activity_time", "N/A")
-#     return activityTime
-# # total_activity_time = analytics_data.get("total_activity_time", "N/A")
