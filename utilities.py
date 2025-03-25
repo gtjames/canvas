@@ -1,13 +1,14 @@
 import requests
 import canvas as c
 
-def sortByAttr(data, attribute):
+def sortByAttr(data, attribute, descending=False):
     # Use sorted with the attribute as the key
     try:
-        return sorted(data, key=lambda item: normalize_value(item.get(attribute, "")))
+        return sorted(data, key=lambda item: normalize_value(item.get(attribute, "")), reverse=descending)
     except KeyError:
         print(f"Invalid attribute: {attribute}")
         return data
+    
 
 def normalize_value(value):
     """Convert values to a common type for comparison."""

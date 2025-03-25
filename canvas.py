@@ -71,17 +71,17 @@ def setSchool(school):
     headers = { "Authorization": f"Bearer {data[f"{school}"]}" }
 
 def startUp():
-    getAnnouncements(courseId)      #   _announcements
-    getAssignments  (courseId)      #   _assignments
-    getCategories   (courseId)      #   _categories
-    list = getStudents     (courseId)      #   _students
-    getEnrollments  (courseId, list)      #   _enrollments        _studentEnrollment
-    getGroups       (1706)          #   _groups
-                                    #  _groupMembers  = {}
-                                    #  _lastLogin     = {}
+    getCategories      (courseId)       #   _categories
+    list = getStudents (courseId)       #   _students
+    getEnrollments     (courseId, list) #   _enrollments        _studentEnrollment
+    # getGroups        (1706)           #   _groups
+    # getUnassigned   (1706)            #   _unassigned
+    # getGroupMembers(groupId)          #   _groupMembers  = {}
+    # getLastLogin(studentId)           #   _lastLogin     = {}
     # getSubmissionByStatus(courseId, 4205, 'unsubmitted')      _submissionByStatus
     # getUnfinishedAssignments(courseId)
-    getUnassigned   (1706)          #   _unassigned
+    # getAnnouncements(courseId)        #   _announcements
+    # getAssignments  (courseId)        #   _assignments
 
 def getAnnouncements(courseId):
     global _announcements
@@ -265,32 +265,35 @@ def studentInTeam():
     sortBy = input("Sort By (first, last, group, score, login, tz, email, id): ")
     size = 0
     while len(sortBy) > 0:
-        students = sortByAttr(studentList, sortBy)
+        descending = sortBy.startswith("-")
+        sortBy = sortBy[1:] if descending else sortBy
+        students = sortByAttr(studentList, sortBy, descending)
         for student in students:
-            if sortBy == "group":                       #   sorting by group
-                if group != student["group"]:           #   did the group change?
-                    if size > 0:                        #   if so, print the group size
-                        print(f"Members in Group {size}")
-                    print(f"\t\t{student["group"]}")    #   print the group name
-                    group = student["group"]            #   save current group
-                    size = 0                            #   reset the group size
-                size += 1                               #   increment the group size
-                print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["email"]} : {student["tz"]}")
-            elif sortBy == "login":
-                print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["group"]} : {student["lastActivity"]}");
-                lastLogin = datetime.fromisoformat(student["lastLogin"])
-                aWeekAgo = datetime.now(lastLogin.tzinfo) - timedelta(days=7)
-                if lastLogin < aWeekAgo and notifyNoneParticipating:
-                    sendMessage([student["id"]], "You have not participated in the class this week",
-                        "Please let me know if you are having trouble with the class")
-            elif sortBy == "id":
-                print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["email"]} : {student["id"]}");
-            elif sortBy == "score":
-                print(f"{student["first"]} {student["last"]} : {student["score"]:-7.2f} : {student["grade"]} : {student["activityTime"]}");
-            elif sortBy == "first" or sortBy == "tz":
-                print(f"{student["first"]} {student["last"]} : {student["group"]} : {student["email"]} : {student["tz"]}")
-            else:
-                print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
+            match sortBy:
+                case "group":                       #   sorting by group
+                    if group != student["group"]:           #   did the group change?
+                        if size > 0:                        #   if so, print the group size
+                            print(f"Members in Group {size}")
+                        print(f"\t\t{student["group"]}")    #   print the group name
+                        group = student["group"]            #   save current group
+                        size = 0                            #   reset the group size
+                    size += 1                               #   increment the group size
+                    print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["email"]} : {student["tz"]}")
+                case "login" | "lastActivity":
+                    print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["group"]} : {student["lastActivity"]}");
+                    lastLogin = datetime.fromisoformat(student["lastLogin"])
+                    aWeekAgo = datetime.now(lastLogin.tzinfo) - timedelta(days=7)
+                    if lastLogin < aWeekAgo and notifyNoneParticipating:
+                        sendMessage([student["id"]], "You have not participated in the class this week",
+                            "Please let me know if you are having trouble with the class")
+                case "id":
+                    print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["email"]} : {student["id"]}");
+                case "score" | "activityTime" | == "grade":
+                    print(f"{student["first"]} {student["last"]} : {student["score"]:-7.2f} : {student["grade"]} : {student["activityTime"]}");
+                case "first" | "tz":
+                    print(f"{student["first"]} {student["last"]} : {student["group"]} : {student["email"]} : {student["tz"]}")
+                case "_":
+                    print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
         sortBy = input("Sort By (first, last, group, score, login, tz, email, id): ")
 
 def studentsInClass():
