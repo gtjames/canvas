@@ -1,16 +1,18 @@
 import requests
 import canvas as c
 
-def sortByAttr(data, attribute, descending=False):
+def sortByAttr(data, attribute):
     # Use sorted with the attribute as the key
+    descending = attribute.startswith("-")
+    attribute = attribute[1:] if descending else attribute
+
     try:
-        return sorted(data, key=lambda item: normalize_value(item.get(attribute, "")), reverse=descending)
+        return attribute, sorted(data, key=lambda item: normalizeValue(item.get(attribute, "")), reverse=descending)
     except KeyError:
         print(f"Invalid attribute: {attribute}")
         return data
-    
 
-def normalize_value(value):
+def normalizeValue(value):
     """Convert values to a common type for comparison."""
     if isinstance(value, (int, float)):
         return value
@@ -23,8 +25,6 @@ def normalize_value(value):
             # If not a number, return lowercase string for consistent sorting
             return value.lower()
     return value  # Return as-is for other types
-
-
 
 def sendMessage(studentId, subject, body):
     payload = {
@@ -39,7 +39,7 @@ def sendMessage(studentId, subject, body):
 
 def getCanvasData(url, params={}):
     try:
-        response = requests.get(url, headers=c.headers, params=params)
+        response = requests.get(f"{c.canvasURL}{url}", headers=c.headers, params=params)
         return response.json()
     except requests.exceptions.RequestException as e:
         # Handle any HTTP or connection errors

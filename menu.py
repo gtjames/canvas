@@ -1,14 +1,15 @@
 # from  nameGroups import renameGroups
-from  canvas import startUp, courseId, studentsInClass, setParams, getStudents, listUnsubmitted, sendStatusLetters, sendMessage, listTeamMembers, studentInTeam
+from  canvas import startUp, courseId, setParams, getStudents, listUnsubmitted, sendStatusLetters, sendMessage, listTeamMembers, studentInTeam
 
 def main():
 
 # Print all command-line arguments
     setParams()
     startUp();
+    
     while True:
         print("\nMain Menu")
-        print("0.  Students in Class  1. Team Members       2. Students in Team")
+        print("1. Team Members        2. Students in Team")
         print("3.  List Unsubmitted   4. Missing Assignment Letters")
         print("5.  Message 1 student  6. Message Class")
         print("10. Set School and Class")
@@ -19,8 +20,6 @@ def main():
         choice = input("Enter your choice: ")
 
         match choice:
-            case '0':
-                studentsInClass()
             case '1':
                 listTeamMembers()
             case '2':
@@ -41,13 +40,13 @@ def main():
                 body      = input("Body: ")
                 sendMessage(studentIds, subject, body)
 
-            # case '5':
+            # case 'r':
             #     renameGroups()
             case '10':
                 setParams()
             case 'x':
                 exit()
-            case "_":
+            case _:
                 print("Invalid choice, please try again.")
 
 main()

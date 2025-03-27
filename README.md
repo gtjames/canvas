@@ -9,17 +9,14 @@
 ##  Main Menu
 ##  0. Student List
         who is in the class. You can sort by name or email
-##  1. Delete old Announcements
-        I had to delete a bunch of old announcements and this let's you
-        pick and choose the ones to get rid of
-        You might want comment this one out. 
-        It does ask you to confirm you want to delete the announcement
+
 ##  2. List Team Members
         Who is on or NOT on a team
         Options are:
         (1) Solo        teams with a single person. Need to push them to a bigger team
         (0) All         Every person that is on a team
         (u) Unassigned  People that have not found a team
+
 ##  3. Rename Groups
         I think the groups should have other names
         This renames the groups to my liking
