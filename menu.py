@@ -1,5 +1,5 @@
 # from  nameGroups import renameGroups
-from  canvas import startUp, courseId, setParams, getStudents, listUnsubmitted, sendStatusLetters, sendMessage, listTeamMembers, studentInTeam
+from  canvas import startUp, courseId, setParams, getStudentList, listAssignments, sendStatusLetters, sendMessage, listTeamMembersByGroup, studentSearch
 
 def main():
 
@@ -21,11 +21,11 @@ def main():
 
         match choice:
             case '1':
-                listTeamMembers()
+                listTeamMembersByGroup()
             case '2':
-                studentInTeam()
+                studentSearch()
             case '3':
-                listUnsubmitted()
+                listAssignments()
             case '4':
                 sendStatusLetters();
             case '5':
@@ -34,7 +34,7 @@ def main():
                 body      = input("Body: ")
                 sendMessage([studentId], subject, body)
             case '6':
-                studentList = getStudents(courseId)
+                studentList = getStudentList(courseId)
                 studentIds = [student['id'] for student in studentList]
                 subject   = input("Subject: ")
                 body      = input("Body: ")

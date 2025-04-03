@@ -1,5 +1,7 @@
 import requests
 import canvas as c
+import json
+import os
 
 def sortByAttr(data, attribute):
     # Use sorted with the attribute as the key
@@ -7,10 +9,19 @@ def sortByAttr(data, attribute):
     attribute = attribute[1:] if descending else attribute
 
     try:
-        return attribute, sorted(data, key=lambda item: normalizeValue(item.get(attribute, "")), reverse=descending)
+        return attribute, sorted(
+            data, 
+            key=lambda item: normalizeValue(item[attribute]) if isinstance(item, dict) else float("inf"),
+            reverse=descending
+        )
     except KeyError:
         print(f"Invalid attribute: {attribute}")
-        return data
+        return attribute, sorted(
+            data, 
+            key=lambda item: normalizeValue(item["first"]) if isinstance(item, dict) else float("inf"),
+            reverse=descending
+        )
+        # return data
 
 def normalizeValue(value):
     """Convert values to a common type for comparison."""
@@ -37,11 +48,29 @@ def sendMessage(studentId, subject, body):
     response = requests.post(f"{c.canvasURL}/conversations?force_new=true", headers=c.headers, json=payload )
     return response.json()
 
-def getCanvasData(url, params={}):
+def getCanvasData(url, params={}, file=0):
     try:
+        if file and os.path.exists("./cache/"+file):
+            print(f"Reading {file}")
+            return readJSON(file)
+
         response = requests.get(f"{c.canvasURL}{url}", headers=c.headers, params=params)
+        if file:
+            writeJSON(file, response.json())
+
         return response.json()
     except requests.exceptions.RequestException as e:
         # Handle any HTTP or connection errors
         print(f"    - {e}")
         return {}
+    
+def writeJSON(file, data):
+    # Write JSON data to file
+    with open("./cache/"+file, "w") as file:
+        json.dump(data, file, indent=4)
+
+def readJSON(file):
+    # Read JSON data from file and convert it back to a dictionary
+    with open("./cache/"+file, "r") as file:
+        data = json.load(file)
+        return data

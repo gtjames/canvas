@@ -16,8 +16,13 @@ _enrollments   = {}         #   the whole works which we do not need
 _groupMembers  = {}
 _groups        = {}
 _lastLogin     = {}
-_students      = {}
-_submissionByStatus = {}
+_missing       = {}
+_studentList   = {}
+_studentsById  = {}
+_studentAssignments = {}
+_studentAllAssignments = {}
+_submissionsByStudent = {}
+_allSubmission = {}
 _unassigned    = {}
 
 def clearCache():
@@ -28,20 +33,138 @@ def clearCache():
     global _groupMembers
     global _groups
     global _lastLogin
-    global _students
-    global _submissionByStatus
+    global _missing
+    global _studentList
+    global _studentsById
+    global _studentAssignments
+    global _studentAllAssignments
+    global _allSubmission
     global _unassigned
 
-    _announcements = {}
-    _assignments = {}
-    _categories = {}
-    _enrollments   = {}
-    _groupMembers = {}
-    _groups = {}
-    _lastLogin = {}
-    _students = {}
-    _submissionByStatus = {}
-    _unassigned = {}
+    _announcements      = {}
+    _assignments        = {}
+    _categories         = {}
+    _enrollments        = {}
+    _groupMembers       = {}
+    _groups             = {}
+    _lastLogin          = {}
+    _missing            = {}
+    _studentList        = {}
+    _studentsById       = {}
+    _studentAssignments = {}
+    _studentAllAssignments = {}
+    _allSubmission = {}
+    _unassigned         = {}
+
+def listTeamMembersByGroup():
+    categories = getStudentGroups(courseId)
+    grpType = input("(1) Solo, (0) All, (u) Unassigned: ")
+
+    while len(grpType) > 0:
+        cnt = 0
+        for category in categories:
+            if category['name'] == "Who is Here":
+                continue
+            print(f"{category['name']}")
+            # if we are only interestin 'U'nassigned this is the route to take
+            if grpType == "u":
+                members = getUnassigned(category['id'])
+                for member in members:
+                    showStudent(member['id'], member["name"])
+                print(f"{len(members)} - unassigned")
+                if input("Email the Unassigned?: ") == 'y':
+                    studentIds = [student['id'] for student in members]
+                    sendMessage(studentIds, "You have not yet found a team", "Please identify a team that works for your schedule and add your name to the group")
+            else:
+                # if we want the group membership this is the place
+                groups = getGroups(category['id'])
+                for group in groups:
+                    if group['members_count'] == 0:
+                        print(f"{group['name']}")
+                        continue
+
+                    if (group['members_count'] == 1 and grpType == "1") or grpType == "0":
+                        cnt = listMembers(group, grpType) + cnt
+                print(f"Members: {cnt}")
+        grpType = input("(1) Solo, (0) All, (u) Unassigned: ")
+
+# Get group categories
+def getStudentGroups(courseId):
+    global _categories
+
+    studentsById = getAllStudentDetails(courseId)
+
+    if courseId not in _categories:
+        _categories[courseId] = getCanvasData(f"/courses/{courseId}/group_categories", {}, "categories")
+
+        for category in _categories[courseId]:
+            if category['name'] == "Who is Here":
+                continue
+            
+            groups = getGroups(category['id'])
+            for group in groups:
+                if group['members_count'] == 0:
+                    continue
+
+                members = getGroupMembers(group['id'])
+                for member in members:
+                    student = studentsById[member["id"]]
+                    student["group"]     = group["name"][:7] 
+
+    return _categories[courseId]
+
+# Get members not in a group
+def getUnassigned(groupId):
+    global _unassigned
+
+    if groupId not in _unassigned:
+        _unassigned[groupId] = getCanvasData(f"/group_categories/{groupId}/users", {"unassigned":True, "per_page": 100}, "unassigned")
+    return _unassigned[groupId]
+
+def studentSearch():
+    studentList = getStudentList(courseId)
+
+    notifyNoneParticipating = False
+    if input("Email Non Participating?: ") == 'y':
+        notifyNoneParticipating = True
+
+    group = ""
+    sortBy = input("Sort By (first, last, group, score, login, tz, email, id): ")
+    size = 0
+    while len(sortBy) > 0:
+        if sortBy == "search":
+            name = input("Enter First or Last Name: ")
+            students = [s for s in studentList if name in s.name]
+        else:
+            sortBy, students = sortByAttr(studentList, sortBy)
+        print(f"# of Students: {len(students)}")
+        for student in students:
+            match sortBy:
+                case "group":                       #   sorting by group
+                    if group != student["group"]:           #   did the group change?
+                        if size > 0:                        #   if so, print the group size
+                            print(f"Members in Group {size}")
+                        print(f"\t\t{student["group"]}")    #   print the group name
+                        group = student["group"]            #   save current group
+                        size = 0                            #   reset the group size
+                    size += 1                               #   increment the group size
+                    print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["email"]} : {student["tz"]}")
+                case "login" | "lastActivity":
+                    print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["group"]} : {student["lastActivity"]}");
+                    lastLogin = datetime.fromisoformat(student["lastLogin"])
+                    aWeekAgo = datetime.now(lastLogin.tzinfo) - timedelta(days=7)
+                    if lastLogin < aWeekAgo and notifyNoneParticipating:
+                        sendMessage([student["id"]], "You have not participated in the class this week",
+                            "Please let me know if you are having trouble with the class")
+                case "id":
+                    print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["email"]} : {student["id"]}");
+                case "score" | "activityTime" | "grade":
+                    print(f"{student["first"]} {student["last"]} : {student["score"]:-7.2f} : {student["grade"]} : {student["activityTime"]}");
+                case "first" | "tz":
+                    print(f"{student["first"]} {student["last"]} : {student["group"]} : {student["email"]} : {student["tz"]}")
+                case _:
+                    print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
+        sortBy = input("Sort By (first, last, group, score, login, tz, email, id): ")
 
 def setParams():
     global school
@@ -71,23 +194,14 @@ def setSchool(school):
     headers = { "Authorization": f"Bearer {data[f"{school}"]}" }
 
 def startUp():
-    getCategories      (courseId)       #   _categories
-    list = getStudents (courseId)       #   _students
-    getEnrollments     (courseId, list) #   _enrollments        _studentEnrollment
-    # getGroups        (1706)           #   _groups
-    # getUnassigned   (1706)            #   _unassigned
-    # getGroupMembers(groupId)          #   _groupMembers  = {}
-    # getLastLogin(studentId)           #   _lastLogin     = {}
-    # getSubmissionByStatus(courseId, 4205, 'unsubmitted')      _submissionByStatus
-    # getUnfinishedAssignments(courseId)
-    # getAnnouncements(courseId)        #   _announcements
-    # getAssignments  (courseId)        #   _assignments
+    getAllStudentDetails (courseId)       #   _studentList
+    getStudentGroups      (courseId)       #   _categories
 
 def getAnnouncements(courseId):
     global _announcements
 
     if courseId not in _announcements:
-        _announcements[courseId] = getCanvasData(f"{canvasURL}/courses/{courseId}/discussion_topics?only_announcements=true", params={"per_page": 100})
+        _announcements[courseId] = getCanvasData(f"/courses/{courseId}/discussion_topics?only_announcements=true", params={"per_page": 100})
     return _announcements[courseId]
 
 def listAnnouncements():
@@ -99,138 +213,96 @@ def getAssignments(courseId):
     global _assignments
     
     if courseId not in _assignments:
-        _assignments[courseId] = getCanvasData(f"{canvasURL}/courses/{courseId}/assignments", params={"per_page": 100})
+        tmp = getCanvasData(f"/courses/{courseId}/assignments", {"per_page": 100}, "assignments")
+
+        sub = [        {
+            "id"             : a["id"],
+            "dueAt"          : a["due_at"],
+            "lockAt"         : a["lock_at"],
+            "possiblePts"    : a["points_possible"],
+            "title"          : a["name"].ljust(50),
+            "hasSubmissions" : a["has_submitted_submissions"]
+        } for a in tmp]
+
+        _assignments[courseId] = sub;
 
     return _assignments[courseId]
 
-def getStudents(courseId):
-    global _students
+def getStudentList(courseId):
+    global _studentList
+    return _studentList[courseId]
 
-    if courseId not in _students:
+def getAllStudentDetails(courseId):
+    global _studentList
+    global _studentsById
+
+    if courseId not in _studentList:
         params = {
             "enrollment_type[]": "student",
             "per_page": 100,  # Maximum allowed per page
         }
-        _students[courseId] = getCanvasData(f"{canvasURL}/courses/{courseId}/users", params=params)
+        _studentList[courseId] = getCanvasData(f"/courses/{courseId}/users", params, "students")
+        _studentsById = {}
+        _studentsById[courseId] = {}
 
-        for student in _students[courseId]:
-            profile = getStudentProfile(student['id'])
+        scores = getEnrollments(courseId)
 
-            lastName, rest = student['sortable_name'].split(", ")
+        tmp = {
+            student['id']: {
+        } for student in _studentList[courseId]}
+
+        for student in _studentList[courseId]:
+            profile   = getStudentProfile(student['id'])
+            lastLogin = getLastLogin(student['id'])
+
+            lastName, rest = student["sortable_name"].split(", ")
             firstName = rest.split(" ")[0].ljust(10)[:10]
-            student['first'] = firstName.ljust(10)[:10]
-            student['last']  = lastName.ljust(15)[:15]
-            student['email'] = student['email'].ljust(30)
-            student['group'] = "Team XX"
-            student['lastLogin'] = "2025-01-01T01:00:00-06:00"
-            student['login'] = "01-01 01:00"
-            student['lastActivity'] = "25-01-01 01:00"
-            student['score'] = 0
-            student['grade'] = '_'
-            student['tz']    = profile['time_zone']
-            student['activityTime'] = 0
-    return _students[courseId]
+            tm  = scores[student["id"]]["activityTime"]
+
+            student['activityTime'] = f"{int(tm/60):5d}.{tm%60:02d}"
+            student['email']        = student['email'].ljust(30)
+            student['first']        = firstName.ljust(10)[:10]
+            student['last']         = lastName.ljust(15)[:15]
+            student["lastActivity"] = scores[student['id']]['lastActivity']
+            student['lastLogin']    = lastLogin
+            student['login']        = lastLogin.replace('T', ' ')[5:16]
+            student['tz']           = profile['time_zone']
+            student["grade"]        = scores[student['id']]['grade']
+            student["group"]        = "Team XX"
+            student["name"]         = student['sortable_name']
+            student["score"]        = scores[student['id']]['score']
+            _studentsById[courseId][student.get('id')] = student
+
+    return _studentsById[courseId]
 
 def getStudentProfile(studentId):
-    return getCanvasData(f"{canvasURL}/users/{studentId}/profile")
+    return getCanvasData(f"/users/{studentId}/profile", {}, ""+str(studentId))
 
 def getStudent(courseId, studentId):
-    global _students
+    global _studentsById
 
-    studentRec = next((student for student in _students[courseId] if int(student["id"]) == studentId), None)
-    if studentRec == None:
-        print(f"    - {studentId} not found")
-        studentRec = getStudentProfile(studentId)
-        _students[courseId].append(studentRec)
-    return studentRec
+    # studentRec = next((_studentsById[courseId][student] for student in _studentList[courseId] if student == studentId), None)
+    # if studentRec == None:
+    #     print(f"    - {studentId} not found")
+    #     studentRec = getStudentProfile(studentId)
+    # return studentRec
+    return _studentsById[courseId][studentId];
 
 # Get details on a student
 def showStudent(studentId, name):
     try:
         student = getStudent(courseId, studentId)
-        print(f"    - {student['first']} {student['last']} {student['email']} - {student['tz']} ")
+        print(f"    - {student.get('first')} {student.get('last')} {student.get('email')} - {student.get('tz')} ")
     except requests.exceptions.RequestException as e:
         # Handle any HTTP or connection errors
         print(f"    - {name} has dropped the course")
 
-# Get group categories
-def getCategories(courseId):
-    global _categories
-
-    studentList = getStudents(courseId)
-
-    if courseId not in _categories:
-        _categories[courseId] = getCanvasData(f"{canvasURL}/courses/{courseId}/group_categories")
-
-        for category in _categories[courseId]:
-            if category['name'] == "Who is Here":
-                continue
-            groups = getGroups(category['id'])
-            for group in groups:
-                if group['members_count'] == 0:
-                    continue
-
-                members = getGroupMembers(0+group['id'])
-                for member in members:
-                    student   = getStudent(courseId, member["id"])
-                    tz = student['tz']
-                    lastLogin = getLastLogin(member["id"])
-                    lastLogin = lastLogin if lastLogin else "2025-01-01T01:00:00-06:00"
-                    
-                    student = next((student for student in studentList if student["id"] == member["id"]), None)
-
-                    student["lastLogin"] = lastLogin
-                    student["login"]     = lastLogin.replace('T', ' ')[5:16]
-                    student["group"]     = group["name"][:7] 
-                    student["tz"]        = tz
-                    
-
-    return _categories[courseId]
-
-# Get members not in a group
-def getUnassigned(groupId):
-    global _unassigned
-
-    if groupId not in _unassigned:
-        _unassigned[groupId] = getCanvasData(f"{canvasURL}/group_categories/{groupId}/users", params={"unassigned":True, "per_page": 100})
-    return _unassigned[groupId]
-
-def listTeamMembers():
-    categories = getCategories(courseId)
-    grpType = input("(1) Solo, (0) All, (u) Unassigned: ")
-    while len(grpType) > 0:
-        cnt = 0;
-        for category in categories:
-            if category['name'] == "Who is Here":
-                continue
-            print(f"{category['name']}")
-            # if we are only interestin 'U'nassigned this is the route to take
-            if grpType == "u":
-                members = getUnassigned(category['id'])
-                for member in members:
-                    showStudent(member['id'], member["name"])
-                print(f"{len(members)} - unassigned")
-                if input("Email the Unassigned?: ") == 'y':
-                    studentIds = [student['id'] for student in members]
-                    sendMessage(studentIds, "You have not yet found a team", "Please identify a team that works for your schedule and add your name to the group")
-            else:
-                # if we want the group membership this is the place
-                groups = getGroups(category['id'])
-                for group in groups:
-                    if group['members_count'] == 0:
-                        continue
-
-                    if (group['members_count'] == 1 and grpType == "1") or grpType == "0":
-                        cnt = listMembers(group, grpType) + cnt
-                print(f"Members: {cnt}")
-        grpType = input("(1) Solo, (0) All, (u) Unassigned: ")
-
 # Get Last Login
-def getEnrollments(courseId, studentList):
+def getEnrollments(courseId):
     global _enrollments
 
     if courseId not in _enrollments:
-        _enrollments[courseId] = getCanvasData(f"{canvasURL}/courses/{courseId}/enrollments?type[]=StudentEnrollment", params={"per_page": 100}) 
+        _enrollments[courseId] = getCanvasData(f"/courses/{courseId}/enrollments", {"per_page": 100, "type[]": "StudentEnrollment"}, "activity") 
         tmp = {
             student['user_id']: {
                 "lastActivity": f"{student['last_activity_at'].replace('T', ' ')[5:16]}",
@@ -238,73 +310,9 @@ def getEnrollments(courseId, studentList):
                 "grade"       : f"{student['grades']['current_grade'].ljust(2)}",
                 "score"       :    student['grades']['current_score'],
         } for student in _enrollments[courseId]}
+    _enrollments[courseId] = tmp
+    return _enrollments[courseId]
 
-            # Merge data by adding enrollment details to matching students
-        for student in studentList:
-            id = student['id']
-            if id in tmp:
-                _st = tmp[id]
-                tm = _st["activityTime"]
-                student["lastActivity"] = _st["lastActivity"]
-                student["activityTime"] = f"{int(tm/60):5d}.{tm%60:02d}"
-                student["grade"]        = _st["grade"]
-                student["score"]        = _st["score"]
-
-    return studentList
-
-def studentInTeam():
-    studentList = getStudents(courseId)
-    getEnrollments(courseId, studentList)   #  merge enrollemnt data with studentList
-    getCategories(courseId)    #  merge group data with studentList
-
-    notifyNoneParticipating = False
-    if input("Email Non Participating?: ") == 'y':
-        notifyNoneParticipating = True
-
-    group = ""
-    sortBy = input("Sort By (first, last, group, score, login, tz, email, id): ")
-    size = 0
-    while len(sortBy) > 0:
-        descending = sortBy.startswith("-")
-        sortBy = sortBy[1:] if descending else sortBy
-        students = sortByAttr(studentList, sortBy, descending)
-        for student in students:
-            match sortBy:
-                case "group":                       #   sorting by group
-                    if group != student["group"]:           #   did the group change?
-                        if size > 0:                        #   if so, print the group size
-                            print(f"Members in Group {size}")
-                        print(f"\t\t{student["group"]}")    #   print the group name
-                        group = student["group"]            #   save current group
-                        size = 0                            #   reset the group size
-                    size += 1                               #   increment the group size
-                    print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["email"]} : {student["tz"]}")
-                case "login" | "lastActivity":
-                    print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["group"]} : {student["lastActivity"]}");
-                    lastLogin = datetime.fromisoformat(student["lastLogin"])
-                    aWeekAgo = datetime.now(lastLogin.tzinfo) - timedelta(days=7)
-                    if lastLogin < aWeekAgo and notifyNoneParticipating:
-                        sendMessage([student["id"]], "You have not participated in the class this week",
-                            "Please let me know if you are having trouble with the class")
-                case "id":
-                    print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["email"]} : {student["id"]}");
-                case "score" | "activityTime" | == "grade":
-                    print(f"{student["first"]} {student["last"]} : {student["score"]:-7.2f} : {student["grade"]} : {student["activityTime"]}");
-                case "first" | "tz":
-                    print(f"{student["first"]} {student["last"]} : {student["group"]} : {student["email"]} : {student["tz"]}")
-                case "_":
-                    print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
-        sortBy = input("Sort By (first, last, group, score, login, tz, email, id): ")
-
-def studentsInClass():
-    studentList = getStudents(courseId)
-
-    sortBy = input("Sort By (first, last, email, id): ")
-    while len(sortBy) > 0:
-        students = sortByAttr(studentList, sortBy)
-        for student in students:
-            print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
-        sortBy = input("Sort By (first, last, email, id): ")
 
 # traverse from the categories in a course to the groups to the members
 def listMembers(group, grpType):
@@ -313,6 +321,7 @@ def listMembers(group, grpType):
     studentIds = [student['id'] for student in members]
     for member in members:
         showStudent(member['id'], member["name"])
+        
     if len(members) == 1 and grpType == "1":
         if input("Email Lonely People?: ") == 'y':
             sendMessage(studentIds, "You are currently the only member of the team", 
@@ -329,7 +338,7 @@ def getGroups(catId):
     global _groups
 
     if catId not in _groups:
-        _groups[catId] = getCanvasData(f"{canvasURL}/group_categories/{catId}/groups", params={"per_page": 100})
+        _groups[catId] = getCanvasData(f"/group_categories/{catId}/groups", {"per_page": 100}, "groups")
 
     return _groups[catId]
 
@@ -338,25 +347,26 @@ def getGroupMembers(groupId):
     global _groupMembers
 
     if groupId not in _groupMembers:
-        _groupMembers[groupId] = getCanvasData(f"{canvasURL}/groups/{groupId}/users", params={"per_page": 100})
+        _groupMembers[groupId] = getCanvasData(f"/groups/{groupId}/users", {"per_page": 100}, "groupMembers"+str(groupId))
     return _groupMembers[groupId]
 
 def sendStatusLetters():
-    studentList = getStudents(courseId)
-    status = getEnrollments(courseId, studentList)
+    studentList = getStudentList(courseId)
     unfinishedAssignments = getUnfinishedAssignments(courseId)
-    statusLetter(status, 90, 101, unfinishedAssignments,
+    _, studentList = sortByAttr(studentList, "score")
+
+    statusLetter(studentList, 90, 101, unfinishedAssignments,
                  "Keep up the good work!: Current Score: ",
                 "\nYou are doing very well in the class keep up the good work")
-    statusLetter(status, 70, 90, unfinishedAssignments,
+    statusLetter(studentList, 70, 90, unfinishedAssignments,
                 "You are doing well but might be missing a few assignments: Current Score: ",
                 "\nYou can still turn these in until the end of week four")
-    statusLetter(status, 0, 70, unfinishedAssignments,
+    statusLetter(studentList, 0, 70, unfinishedAssignments,
                  "How are you doing in the class? It looks like you are struggling: Current Score: ",
                 "\nHere is a list of your missing assignments. You can still turn these in until the end of week four\nDon't forget there is tutoring available for the class.")
 
-def statusLetter(status, lo, hi, unfinishedAssignments, subject, body):
-    list = [ student for student in status   if lo <= student["score"] < hi ]
+def statusLetter(studentScores, lo, hi, unfinishedAssignments, subject, body):
+    list = [ student for student in studentScores   if lo <= student["score"] < hi ]
 
     go = input("go/no go? ")
 
@@ -374,61 +384,89 @@ def statusLetter(status, lo, hi, unfinishedAssignments, subject, body):
 
 def listUnsubmitted():
     unfinishedAssignments = getUnfinishedAssignments(courseId)
-    studentIds = set()
 
     notify = input("Notify?: ")
     msg = input("Message?: ")
     msg = msg if msg else "\tThe Following assignments have not been submitted.\n\tThese can all be submitted up to the end of Week 4."
+    missing = input("(A)ll / (M)issing?: ")
 
-    for studentId, info in unfinishedAssignments.items():
-        if info['unsubmitted']:
-            studentIds.add(studentId)
-            print(f"{info['name'].ljust(50)[:50]} : {studentId}")
-            for assignment in info['unsubmitted']:
-                print(f"    - {assignment}")
-            if notify == "y":
+    for studentId, unsub in unfinishedAssignments.items():
+        print(f"{unsub['name'].ljust(50)[:50]} : {len(unsub)}")
+        displayList = unsub['submissions']
+        if missing == "m":
+            missingWork = [asgn for asgn in displayList if asgn.get("missed")]
+            missingList = "\n".join(f"\t{a['title']}" for a in missingWork) if missingWork else "\tAll Assignments are Submitted"                                          
+            print(missingList);
+            if notify == "y" and len(missingWork) > 0:
                 missed = "\n\t".join(map(str,unfinishedAssignments[studentId]['unsubmitted']))  # Convert each number to a string
                 sendMessage([f"'{studentId}'"], "Missing Assignments", f"{msg}\n\n\t{missed}")
+            else:
+                for assignment in displayList:
+                    if assignment.missed:
+                        print(f"              {assignment}")
+                    else:
+                        print(f" ${assignment['score']}  {(assignment.get('submittedAt', '          T').replace('T', ' '))[5:11]} ${assignment['title']} ")
 
 # Get Last Login
 def getLastLogin(studentId):
     global _lastLogin
 
     if studentId not in _lastLogin:
-        _lastLogin[studentId] = getCanvasData(f"{canvasURL}/users/{studentId}", params={ "include[]": "last_login" })
+        _lastLogin[studentId] = getCanvasData(f"/users/{studentId}", { "include[]": "last_login" }, "lastLogin"+str(studentId))
 
     return _lastLogin[studentId]["last_login"]
 
 def getUnfinishedAssignments(courseId):
-    students    = getStudents(courseId)
-    assignments = getAssignments(courseId)
-    studentAssignments = {
-        student['id']: {
-            "name": student['name'], 
-            "email": student["email"], 
-            "unsubmitted": []} 
-        for student in students}
+    if courseId not in _submissionsByStudent:
 
-    for assignment in assignments:
-        dueDateStr = assignment['due_at']
-        if dueDateStr:
-            dueDate = datetime.fromisoformat(dueDateStr.replace('Z', '+00:00'))
-            # Skip assignments that aren't past due
-            if dueDate > datetime.now(timezone.utc):
-                print(f"Not due yet: {dueDateStr.split('T')[0]} : {assignment['name']}")
-                continue
+        students    = getStudentList(courseId)
+        assignments = getAssignments(courseId)
 
-        submissions = getSubmissionByStatus(courseId, assignment['id'], 'unsubmitted')
-        for submission in submissions:
-            studentId = submission['user_id']
-            if studentId in studentAssignments:
-                studentAssignments[studentId]["unsubmitted"].append(assignment['name'])
-    return studentAssignments
+        allSubmissions = {}
 
-def getSubmissionByStatus(courseId, assignmentId, state):
-    global _submissionByStatus
-    # print(f"getSubmissionByStatus\t{courseId} {assignmentId} {state}")
-    if assignmentId not in _submissionByStatus:
-        _submissionByStatus[assignmentId] = getCanvasData(f"{canvasURL}/courses/{courseId}/assignments/{assignmentId}/submissions", params={"per_page": 100})
+        submissionsByStudent = {
+            student['id']: { "name": student["name"], "submissions": [] } for student in students
+        }
 
-    return [s for s in _submissionByStatus[assignmentId] if s['missing'] == True]
+        today = datetime.now(timezone.utc)  # Make 'today' timezone-aware
+        pastAssignments = [a for a in assignments if datetime.fromisoformat(a["dueAt"]) < today]
+        
+        for assignment in pastAssignments:
+            # Fetch all submissions for the assignment
+            allSubmissions[assignment["id"]] = getSubmissions(courseId, assignment['id'], assignment['title'])
+            for submission in allSubmissions[assignment["id"]]:
+                studentId = submission['userId']
+                if studentId in submissionsByStudent:
+                    submission["title"] = assignment["title"];
+                    submissionsByStudent[studentId]["submissions"].append(assignment['title'])
+
+        _submissionsByStudent[courseId] = submissionsByStudent;
+
+    return _submissionsByStudent[courseId]
+
+def getSubmissions(courseId, assignmentId, title):
+    global _allSubmission
+
+    if assignmentId not in _allSubmission:
+        tmp = getCanvasData(f"/courses/{courseId}/assignments/{assignmentId}/submissions", {"per_page": 100}, "sub"+str(assignmentId))
+        _allSubmission[assignmentId] = []
+        for a in tmp:
+            b = {}
+            b['grade']         = a["grade"]
+            b['gradedAt']      = a["graded_at"]
+            b['id']            = a["id"]
+            b['score']         = a["score"]
+            b['submittedAt']   = a["submitted_at"]
+            b['userId']        = a["user_id"]
+            b['workflowState'] = a["workflow_state"]
+            b["assignmentId"]  = a["assignment_id"]
+            b["late"]          = a["late"]
+            b["missed"]        = a["missing"]
+            b["missing"]       = a["missing"] if a["missing"] else "done   "
+            b["secondsLate"]   = a["seconds_late"]
+            b["title"]         = title.ljust(50)
+            _allSubmission[assignmentId].append(b)
+
+        _missing[assignmentId] = [s for s in _allSubmission[assignmentId] if s['missing'] == True]
+        
+    return _missing[assignmentId]
