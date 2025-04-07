@@ -99,7 +99,8 @@ def studentSearch():
         notifyNoneParticipating = True
 
     group = ""
-    sortBy = input("Sort By (first, last, group, score, login, tz, email, id): ")
+    sortBy = input("Sort By (first, last, group, score, login, tz, email, id, search): ")
+
     size = 0
     while len(sortBy) > 0:
         if sortBy == "search":
@@ -117,7 +118,7 @@ def studentSearch():
 
                     print(f"{student["first"]} {student["last"]}\nEmail:\t\t{student["email"]}\nGroup:\t\t{student["group"]}\nTime Zone:\t{student["tz"]}\nLast Login:\t{student["login"]}\nID:\t\t{student["id"]}\nScore:\t\t{student["score"]}\nGrade:\t\t{student["grade"]}\nTime Active:\t{student["activityTime"]}")
                     print("\n".join(f"\t{a['title']}\tMissing"                          for a in missed)    if missed else "\tNone Missing")
-                    print("\n".join(f"\t{a["title"]}\t{a["grade"]}//{a["possiblePts"]}\t{a["submittedAt"]}" for a in submitted) if submitted else "")
+                    print("\n".join(f"\t{a["title"]}\t{a["grade"]}/{a["possiblePts"]}\t{a["submittedAt"]}" for a in submitted) if submitted else "")
                 case "group":                       #   sorting by group
                     if group != student["group"]:           #   did the group change?
                         if size > 0:                        #   if so, print the group size
@@ -135,14 +136,14 @@ def studentSearch():
                         sendMessage([student["id"]], "You have not participated in the class this week",
                             "Please let me know if you are having trouble with the class")
                 case "id":
-                    print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["email"]} : {student["id"]}");
+                    print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}");
                 case "score" | "activityTime" | "grade":
                     print(f"{student["first"]} {student["last"]} : {student["score"]} : {student["grade"]} : {student["activityTime"]}");
                 case "first" | "tz":
                     print(f"{student["first"]} {student["last"]} : {student["group"]} : {student["email"]} : {student["tz"]}")
                 case _:
                     print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
-        sortBy = input("Sort By (first, last, group, score, login, tz, email, id): ")
+        sortBy = input("Sort By (first, last, group, score, login, tz, email, id, search): ")
 
 def getAllStudentDetails(courseId):
     global _studentList
@@ -171,18 +172,18 @@ def getAllStudentDetails(courseId):
             firstName = rest.split(" ")[0].ljust(10)[:10]
             tm  = scores[student["id"]]["activityTime"]
 
-            student["activityTime"] = f"{int(tm/60):5d}.{tm%60:02d}"
+            student["activityTime"] = f"{int(tm/60):4d}.{tm%60:02d}"
             student["email"]        = student["email"].ljust(30)
             student["first"]        = firstName.ljust(10)[:10]
+            student["grade"]        = scores[student["id"]]["grade"]
+            student["group"]        = "Team XX"
             student["last"]         = lastName.ljust(15)[:15]
             student["lastActivity"] = scores[student["id"]]["lastActivity"]
             student["lastLogin"]    = lastLogin
             student["login"]        = lastLogin.replace("T", " ")[5:16]
-            student["tz"]           = profile["time_zone"]
-            student["grade"]        = scores[student["id"]]["grade"]
-            student["group"]        = "Team XX"
             student["name"]         = student["sortable_name"]
-            student["score"]        = scores.get(student["id"]).get("score", 0.0)
+            student["score"]        = scores[student["id"]]["score"]
+            student["tz"]           = profile["time_zone"]
             _studentsById[courseId][student.get("id")] = student
 
     return _studentsById[courseId]
@@ -209,11 +210,9 @@ def listAssignments():
             print(f"{unsub["name"].ljust(50)[:50]}")
             for assignment in displayList:
                 if assignment["missed"]:
-                    print(f"              {assignment["title"]}")
+                    print(f"            {assignment["title"]}")
                 else:
-                    submittedAt = assignment.get("submittedAt") or "          T"
-                    formattedDate = submittedAt.replace("T", " ")[5:11] if submittedAt.strip() else "      "
-                    print(f" {assignment.get("score", 0)}  {formattedDate} {assignment.get("title", "Untitled")} ")
+                    print(f" {assignment.get("score", 0)}  {assignment.get("submittedAt")} {assignment.get("title", "Untitled")} ")
 
 # Get group categories
 def getStudentGroups(courseId):
@@ -235,8 +234,8 @@ def getStudentGroups(courseId):
 
                 members = getGroupMembers(group["id"])
                 for member in members:
-                    student = studentsById[member["id"]]
-                    student["group"]     = group["name"][:7] 
+                    if member["id"] in studentsById:
+                        studentsById[member["id"]]["group"]     = group["name"][:7] 
 
     return _categories[courseId]
 
@@ -245,7 +244,7 @@ def getUnassigned(groupId):
     global _unassigned
 
     if groupId not in _unassigned:
-        _unassigned[groupId] = getCanvasData(f"/group_categories/{groupId}/users", {"unassigned":True, "per_page": 100}, "unassigned")
+        _unassigned[groupId] = getCanvasData(f"/group_categories/{groupId}/users", {"unassigned": True, "per_page": 100}, "unassigned")
     return _unassigned[groupId]
 
 def getAssignments(courseId):
@@ -258,7 +257,7 @@ def getAssignments(courseId):
             "id"             : a["id"],
             "dueAt"          : a["due_at"],
             "lockAt"         : a["lock_at"],
-            "possiblePts"    : a["points_possible"],
+            "possiblePts"    : f"{a["points_possible"]:2.0f}",
             "title"          : a["name"].ljust(50),
             "hasSubmissions" : a["has_submitted_submissions"]
         } for a in tmp]
@@ -272,21 +271,20 @@ def getStudentList(courseId):
     return _studentList[courseId]
 
 def getStudentProfile(studentId):
-    return getCanvasData(f"/users/{studentId}/profile", {}, ""+str(studentId))
+    return getCanvasData(f"/users/{studentId}/profile", {}, "st-"+str(studentId))
 
 def getStudent(courseId, studentId):
     global _studentsById
 
-    return _studentsById[courseId][studentId];
+    return _studentsById.get(courseId, {}).get(studentId)
 
 # Get details on a student
 def showStudent(studentId, name):
-    try:
         student = getStudent(courseId, studentId)
+        if student is None:
+            print(f"    - {name} has dropped the course")
+            return
         print(f"    - {student.get("first")} {student.get("last")} {student.get("email")} - {student.get("tz")} ")
-    except requests.exceptions.RequestException as e:
-        # Handle any HTTP or connection errors
-        print(f"    - {name} has dropped the course")
 
 # Get Last Login
 def getCourseActivity(courseId):
@@ -299,9 +297,9 @@ def getCourseActivity(courseId):
                 "lastActivity": f"{student["last_activity_at"].replace("T", " ")[5:16]}",
                 "activityTime":    student["total_activity_time"],
                 "grade"       : f"{student["grades"]["current_grade"].ljust(2)}",
-                "score"       :    str(student["grades"]["current_score"]).ljust(3),
+                "score"       : f"{student["grades"]["current_score"]:3.0f}",
         } for student in _enrollments[courseId]}
-    _enrollments[courseId] = tmp
+        _enrollments[courseId] = tmp
     return _enrollments[courseId]
 
 # traverse from the categories in a course to the groups to the members
@@ -328,7 +326,7 @@ def getGroups(catId):
     global _groups
 
     if catId not in _groups:
-        _groups[catId] = getCanvasData(f"/group_categories/{catId}/groups", {"per_page": 100}, "groups")
+        _groups[catId] = getCanvasData(f"/group_categories/{catId}/groups", {"per_page": 100}, "grps-"+str(catId))
 
     return _groups[catId]
 
@@ -337,7 +335,7 @@ def getGroupMembers(groupId):
     global _groupMembers
 
     if groupId not in _groupMembers:
-        _groupMembers[groupId] = getCanvasData(f"/groups/{groupId}/users", {"per_page": 100}, "groupMembers"+str(groupId))
+        _groupMembers[groupId] = getCanvasData(f"/groups/{groupId}/users", {"per_page": 100}, "grpMbrs"+str(groupId))
     return _groupMembers[groupId]
 
 # Get Last Login
@@ -345,7 +343,7 @@ def getLastLogin(studentId):
     global _lastLogin
 
     if studentId not in _lastLogin:
-        _lastLogin[studentId] = getCanvasData(f"/users/{studentId}", { "include[]": "last_login" }, "lastLogin"+str(studentId))
+        _lastLogin[studentId] = getCanvasData(f"/users/{studentId}", { "include[]": "last_login" }, "ll-"+str(studentId))
 
     return _lastLogin[studentId]["last_login"]
 
@@ -361,86 +359,96 @@ def getAllSubmissions(courseId):
             student["id"]: { "name": student["name"], "submissions": [] } for student in students
         }
 
-        today = datetime.now(timezone.utc)  # Make "today" timezone-aware
-        pastAssignments = [a for a in assignments if datetime.fromisoformat(a["dueAt"]) < today]
+        # today = datetime.now(timezone.utc)  # Make "today" timezone-aware
+        # pastAssignments = [a for a in assignments if datetime.fromisoformat(a["dueAt"]) < today]
         
-        for assignment in pastAssignments:
+        for assignment in assignments:
             # Fetch all submissions for the assignment
-            allSubmissions[assignment["id"]] = getSubmissions(courseId, assignment["id"], assignment["title"])
+            allSubmissions[assignment["id"]] = getSubmissions(courseId, assignment)
             
             for submission in allSubmissions[assignment["id"]]:
                 studentId = submission["userId"]
                 if studentId in submissionsByStudent:
-                    submission["title"] = assignment["title"];
-                    submission["possiblePts"] = assignment["possiblePts"];
                     submissionsByStudent[studentId]["submissions"].append(submission)
 
         _submissionsByStudent[courseId] = submissionsByStudent;
 
     return _submissionsByStudent[courseId]
 
-def getSubmissions(courseId, assignmentId, title):
+def getSubmissions(courseId, assignment):
     global _allSubmission
 
-    if assignmentId not in _allSubmission:
-        tmp = getCanvasData(f"/courses/{courseId}/assignments/{assignmentId}/submissions", {"per_page": 100}, "sub"+str(assignmentId))
-        _allSubmission[assignmentId] = []
-        for a in tmp:
+    if assignment["id"] not in _allSubmission:
+        tmp = getCanvasData(f"/courses/{courseId}/assignments/{assignment["id"]}/submissions", {"per_page": 100}, "sub"+str(assignment["id"]))
+        _allSubmission[assignment["id"]] = []
+        for s in tmp:
             b = {}
-            b["assignmentId"]  = a["assignment_id"]
-            b["grade"]         = a["grade"]
-            b["gradedAt"]      = a["graded_at"]
-            b["id"]            = a["id"]
-            b["late"]          = a["late"]
-            b["missed"]        = a["missing"]
-            b["missing"]       = a["missing"] if a["missing"] else "done   "
-            b["score"]         = f"{str(a.get("score", 0.0)).ljust(3)}"  # Defaults to 0.0 if score is None
-            b["secondsLate"]   = a["seconds_late"]
-            b["submittedAt"]   = a["submitted_at"].replace("T", " ")[5:11] if a["submitted_at"] else "Not submitted"
-            b["title"]         = title.ljust(50)
-            b["userId"]        = a["user_id"]
-            b["workflowState"] = a["workflow_state"]
-            _allSubmission[assignmentId].append(b)
+            b["assignmentId"]  = s["assignment_id"]
+            b["grade"]         =(s["grade"] or "").rjust(2)
+            b["gradedAt"]      = s["graded_at"]
+            b["id"]            = s["id"]
+            b["late"]          = s["late"]
+            b["missed"]        = s["missing"]
+            b["missing"]       = s["missing"] if s["missing"] else "done   "
+            b["score"]         = f"{(s.get('score') or 0.0):2.0f}"
+            b["secondsLate"]   = s["seconds_late"]
+            b["submittedAt"]   = s["submitted_at"].replace("T", " ")[5:11] if s["submitted_at"] else "      "
+            b["userId"]        = s["user_id"]
+            b["workflowState"] = s["workflow_state"]
+            b["dueAt"]         = assignment["dueAt"]
+            b["possiblePts"]   = assignment["possiblePts"]
+            b["title"]         = assignment["title"]
+            _allSubmission[assignment["id"]].append(b)
 
-    return _allSubmission[assignmentId]
+    return _allSubmission[assignment["id"]]
 
 def sendStatusLetters():
-    studentList = getStudentList(courseId)
-    unfinishedAssignments = getAllSubmissions(courseId)
+    studentList     = getStudentList(courseId)
+    pastAssignments = getAllSubmissions(courseId)
+
     _, studentList = sortByAttr(studentList, "score")
 
-    statusLetter(studentList, 90, 101, unfinishedAssignments,
+    statusLetter(studentList, 90, 101, pastAssignments,
                  "Keep up the good work!: Current Score: ",
                 "\nYou are doing very well in the class keep up the good work")
-    statusLetter(studentList, 70, 90, unfinishedAssignments,
+    statusLetter(studentList, 70, 90, pastAssignments,
                 "You are doing well but might be missing a few assignments: Current Score: ",
                 "\nYou can still turn these in until the end of week four")
-    statusLetter(studentList, 0, 70, unfinishedAssignments,
+    statusLetter(studentList, 0, 70, pastAssignments,
                  "How are you doing in the class? It looks like you are struggling: Current Score: ",
                 "\nHere is a list of your missing assignments. You can still turn these in until the end of week four\nDon't forget there is tutoring available for the class.")
 
 def statusLetter(studentScores, lo, hi, unfinishedAssignments, subject, body):
-    list = [ student for student in studentScores   if lo <= student["score"] < hi ]
+    mailList = [ student for student in studentScores   if lo <= float(student['score']) < hi ]
 
-    go = input("go/no go? ")
+    go         = input("go/no go? ")    == "go"
+    showMissed = input("Show Missed? ") == "y"
 
-    for s in list:
-        print(f"{s["score"]:6.1f} - {s["name"]} {" dropped" if s["id"] not in unfinishedAssignments else ""}")
+    # today = datetime.now(timezone.utc)  # Make "today" timezone-aware
+    for s in mailList:
+        missed = "\n".join(f"\t{a['title']}" for a in unfinishedAssignments[s["id"]]["submissions"] if a.get("missed")) or ""     
+        
+        # pastAssignments = [a for a in unfinishedAssignments[s["id"]]["submissions"]
+        #                    if datetime.fromisoformat(a["dueAt"]) < today and a.get("missed")]
 
+        print(f"{float(s['score']):4.0f} - {s["first"]} {s["last"]} {" dropped" if s["id"] not in unfinishedAssignments else ""}")
+
+        if len(missed) == 0:
+            continue
+        if showMissed:
+            print(missed)
         # Check if the student ID is in the unfinishedAssignments dictionary
-        if s["id"] not in unfinishedAssignments or go != "go":
+        if s["id"] not in unfinishedAssignments or not go:
             continue
 
-        missed = "\n\t".join(map(str,unfinishedAssignments[s["id"]]["unsubmitted"]))
-
         sendMessage([s["id"]],  f"{subject} {s["score"]}",
-                                f"\n{s["firstName"]},\n{body}\nMissing Assignments(if any)\n\t{missed}\n\nBro. James")
+                                f"\n{s["first"]},\n{body}\nMissing Assignments(if any)\n\t{missed}\n\nBro. James")
 
 def getAnnouncements(courseId):
     global _announcements
 
     if courseId not in _announcements:
-        _announcements[courseId] = getCanvasData(f"/courses/{courseId}/discussion_topics?only_announcements=true", params={"per_page": 100})
+        _announcements[courseId] = getCanvasData(f"/courses/{courseId}/discussion_topics?only_announcements=true", {"per_page": 100}, "announcements")
     return _announcements[courseId]
 
 def listAnnouncements():

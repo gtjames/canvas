@@ -50,8 +50,7 @@ def sendMessage(studentId, subject, body):
 
 def getCanvasData(url, params={}, file=0):
     try:
-        if file and os.path.exists("./cache/"+file):
-            print(f"Reading {file}")
+        if file and os.path.exists("./cache/"+file+".json"):
             return readJSON(file)
 
         response = requests.get(f"{c.canvasURL}{url}", headers=c.headers, params=params)
@@ -64,13 +63,16 @@ def getCanvasData(url, params={}, file=0):
         print(f"    - {e}")
         return {}
     
-def writeJSON(file, data):
+def writeJSON(fileName, data):
     # Write JSON data to file
-    with open("./cache/"+file, "w") as file:
+    with open("./cache/"+fileName+".json", "w") as file:
         json.dump(data, file, indent=4)
+        print(f"Done writing {fileName}")
 
-def readJSON(file):
+
+def readJSON(fileName):
     # Read JSON data from file and convert it back to a dictionary
-    with open("./cache/"+file, "r") as file:
+    with open("./cache/"+fileName+".json", "r") as file:
         data = json.load(file)
+        print(f"Done reading {fileName}")
         return data
