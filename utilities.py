@@ -52,6 +52,7 @@ def getCanvasData(url, params={}, file=0):
     try:
         if file and os.path.exists("./cache/"+file+".json"):
             return readJSON(file)
+        # print(f"API {c.canvasURL}{url}");
 
         response = requests.get(f"{c.canvasURL}{url}", headers=c.headers, params=params)
         if file:
@@ -67,12 +68,12 @@ def writeJSON(fileName, data):
     # Write JSON data to file
     with open("./cache/"+fileName+".json", "w") as file:
         json.dump(data, file, indent=4)
-        print(f"Done writing {fileName}")
+        # print(f"Done writing {fileName}")
 
 
 def readJSON(fileName):
     # Read JSON data from file and convert it back to a dictionary
     with open("./cache/"+fileName+".json", "r") as file:
         data = json.load(file)
-        print(f"Done reading {fileName}")
+        # print(f"Done reading {fileName}")
         return data

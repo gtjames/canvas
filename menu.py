@@ -9,7 +9,7 @@ def main():
     
     while True:
         print("\nMain Menu")
-        print("1. Team Members        2. Students in Team")
+        print("1.  Team Members        2. Students in Team")
         print("3.  List Unsubmitted   4. Missing Assignment Letters")
         print("5.  Message 1 student  6. Message Class")
         print("10. Set School and Class")

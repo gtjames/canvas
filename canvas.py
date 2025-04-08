@@ -360,7 +360,7 @@ def getAllSubmissions(courseId):
         }
 
         # today = datetime.now(timezone.utc)  # Make "today" timezone-aware
-        # pastAssignments = [a for a in assignments if datetime.fromisoformat(a["dueAt"]) < today]
+        # assignments = [a for a in assignments if datetime.fromisoformat(a["dueAt"]) < today]
         
         for assignment in assignments:
             # Fetch all submissions for the assignment
@@ -461,9 +461,9 @@ def setParams():
     global courseId
     if (len(school) == 0 and len(sys.argv) > 1):
         courseId = sys.argv[1]
-    else:
-        school   = input("Enter School: ")
-        courseId = input("Enter Course: ")
+    # else:
+        # school   = input("Enter School: ")
+        # courseId = input("Enter Course: ")
     school   = "byupw" if school   == "" else school
     courseId = "7113"  if courseId == "" else courseId
 
