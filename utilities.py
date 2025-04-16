@@ -45,18 +45,18 @@ def sendMessage(studentId, subject, body):
         "context_code": f"course_{c.courseId}",
         "bulk_message": True
     }
-    response = requests.post(f"{c.canvasURL}/conversations?force_new=true", headers=c.headers, json=payload )
-    return response.json()
+    # response = requests.post(f"{c.canvasURL}/conversations?force_new=true", headers=c.headers, json=payload )
+    # return response.json()
 
-def getCanvasData(url, params={}, file=0):
+def getCanvasData(url, params={}, fileName=0):
     try:
-        if file and os.path.exists("./cache/"+file+".json"):
-            return readJSON(file)
+        if fileName and os.path.exists(f"./cache/{c.courseId}/{fileName}.json"):
+            return readJSON(fileName)
         # print(f"API {c.canvasURL}{url}");
 
         response = requests.get(f"{c.canvasURL}{url}", headers=c.headers, params=params)
-        if file:
-            writeJSON(file, response.json())
+        if fileName:
+            writeJSON(fileName, response.json())
 
         return response.json()
     except requests.exceptions.RequestException as e:
@@ -66,14 +66,14 @@ def getCanvasData(url, params={}, file=0):
     
 def writeJSON(fileName, data):
     # Write JSON data to file
-    with open("./cache/"+fileName+".json", "w") as file:
+    with open(f"./cache/{c.courseId}/{fileName}.json", "w") as file:
         json.dump(data, file, indent=4)
         # print(f"Done writing {fileName}")
 
 
 def readJSON(fileName):
     # Read JSON data from file and convert it back to a dictionary
-    with open("./cache/"+fileName+".json", "r") as file:
+    with open(f"./cache/{c.courseId}/{fileName}.json", "r") as file:
         data = json.load(file)
         # print(f"Done reading {fileName}")
         return data

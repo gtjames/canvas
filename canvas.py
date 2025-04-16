@@ -2,7 +2,8 @@ import sys
 import requests
 import json
 from utilities import sendMessage, sortByAttr, getCanvasData
-from datetime import datetime, timezone, timedelta
+from datetime  import datetime, timezone, timedelta
+from colors    import x, rowColor
 
 school   = ""
 courseId  = ""
@@ -66,9 +67,9 @@ def listTeamMembersByGroup():
         cnt = 0
 
         for category in categories:
-            if category["name"] == "Who is Here":
+            if category["name"][0] == " ":
                 continue
-            print(f"{category["name"]}")
+            print(f"{x.reset}{category["name"]}")
             # if we are only interestin "U"nassigned this is the route to take
             if grpType == "u":
                 members = getUnassigned(category["id"])
@@ -117,8 +118,10 @@ def studentSearch():
                     submitted      = [s for s in allAssignments["submissions"] if not s["missed"]]
 
                     print(f"{student["first"]} {student["last"]}\nEmail:\t\t{student["email"]}\nGroup:\t\t{student["group"]}\nTime Zone:\t{student["tz"]}\nLast Login:\t{student["login"]}\nID:\t\t{student["id"]}\nScore:\t\t{student["score"]}\nGrade:\t\t{student["grade"]}\nTime Active:\t{student["activityTime"]}")
-                    print("\n".join(f"\t{a['title']}\tMissing"                          for a in missed)    if missed else "\tNone Missing")
-                    print("\n".join(f"\t{a["title"]}\t{a["grade"]}/{a["possiblePts"]}\t{a["submittedAt"]}" for a in submitted) if submitted else "")
+                    print("\n".join(f"{rowColor()}Missed\t{a['title']}"                          
+                        for a in missed)    if missed else "None Missing")
+                    print("\n".join(f"{rowColor()}\t{a["title"]}\t{a["grade"]}/{a["possiblePts"]}\t{a["submittedAt"]}" 
+                        for a in submitted) if submitted else "")
                 case "group":                       #   sorting by group
                     if group != student["group"]:           #   did the group change?
                         if size > 0:                        #   if so, print the group size
@@ -127,23 +130,23 @@ def studentSearch():
                         group = student["group"]            #   save current group
                         size = 0                            #   reset the group size
                     size += 1                               #   increment the group size
-                    print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["email"]} : {student["tz"]}")
+                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["login"]} : {student["email"]} : {student["tz"]}")
                 case "login" | "lastActivity":
-                    print(f"{student["first"]} {student["last"]} : {student["login"]} : {student["group"]} : {student["lastActivity"]}");
+                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["login"]} : {student["group"]} : {student["lastActivity"]}");
                     lastLogin = datetime.fromisoformat(student["lastLogin"])
                     aWeekAgo = datetime.now(lastLogin.tzinfo) - timedelta(days=7)
                     if lastLogin < aWeekAgo and notifyNoneParticipating:
                         sendMessage([student["id"]], "You have not participated in the class this week",
                             "Please let me know if you are having trouble with the class")
                 case "id":
-                    print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}");
+                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}");
                 case "score" | "activityTime" | "grade":
-                    print(f"{student["first"]} {student["last"]} : {student["score"]} : {student["grade"]} : {student["activityTime"]}");
+                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["score"]} : {student["grade"]} : {student["activityTime"]}");
                 case "first" | "tz":
-                    print(f"{student["first"]} {student["last"]} : {student["group"]} : {student["email"]} : {student["tz"]}")
+                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["group"]} : {student["email"]} : {student["tz"]}")
                 case _:
-                    print(f"{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
-        sortBy = input("Sort By (first, last, group, score, login, tz, email, id, search): ")
+                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
+        sortBy = input(f"{x.reset}Sort By (first, last, group, score, login, tz, email, id, search): ")
 
 def getAllStudentDetails(courseId):
     global _studentList
@@ -189,6 +192,7 @@ def getAllStudentDetails(courseId):
     return _studentsById[courseId]
 
 def listAssignments():
+    row = 0
     submissionsByStudent = getAllSubmissions(courseId)
 
     notify = input("Notify?: ")
@@ -197,11 +201,13 @@ def listAssignments():
     missing = input("(A)ll / (M)issing?: ")
 
     for studentId, unsub in submissionsByStudent.items():
+        row += 1
         displayList = unsub["submissions"]
+        _ ,displayList = sortByAttr(displayList, "title")
         if missing == "m":
             missingWork = [asgn for asgn in displayList if asgn.get("missed")]
-            missingList = "\n".join(f"\t{a["title"]}" for a in missingWork) if missingWork else "\tAll Assignments are Submitted"                                          
-            print(f"{unsub["name"].ljust(50)[:50]}  Missing: {len(missingWork)}")
+            missingList = "\n".join(f"{rowColor()}\t{a["title"]}" for a in missingWork) if missingWork else "\tAll Assignments are Submitted"                                          
+            print(f"{unsub["name"].ljust(50)[:50]}  `Missing:` {len(missingWork)}")
             print(missingList);
             if notify == "y" and len(missingWork) > 0:
                 missed = "\n\t".join(map(str,submissionsByStudent[studentId]["unsubmitted"]))  # Convert each number to a string
@@ -210,9 +216,9 @@ def listAssignments():
             print(f"{unsub["name"].ljust(50)[:50]}")
             for assignment in displayList:
                 if assignment["missed"]:
-                    print(f"            {assignment["title"]}")
+                    print(f"{rowColor()}{x.fgGreen} Missing       {assignment["title"]}{x.reset}")
                 else:
-                    print(f" {assignment.get("score", 0)}  {assignment.get("submittedAt")} {assignment.get("title", "Untitled")} ")
+                    print(f"{rowColor()} {assignment.get("score", 0)}/{assignment.get("possiblePts")}  {assignment.get("submittedAt")} \033[1;34m{assignment.get("title", "Untitled")}\033[0m")
 
 # Get group categories
 def getStudentGroups(courseId):
@@ -284,7 +290,7 @@ def showStudent(studentId, name):
         if student is None:
             print(f"    - {name} has dropped the course")
             return
-        print(f"    - {student.get("first")} {student.get("last")} {student.get("email")} - {student.get("tz")} ")
+        print(f"{rowColor()}    - {student.get("first")} {student.get("last")} {student.get("email")} - {student.get("tz")} ")
 
 # Get Last Login
 def getCourseActivity(courseId):
@@ -426,7 +432,7 @@ def statusLetter(studentScores, lo, hi, unfinishedAssignments, subject, body):
 
     # today = datetime.now(timezone.utc)  # Make "today" timezone-aware
     for s in mailList:
-        missed = "\n".join(f"\t{a['title']}" for a in unfinishedAssignments[s["id"]]["submissions"] if a.get("missed")) or ""     
+        missed = "\n".join(f"{rowColor()}\t{a['title']}" for a in unfinishedAssignments[s["id"]]["submissions"] if a.get("missed")) or ""     
         
         # pastAssignments = [a for a in unfinishedAssignments[s["id"]]["submissions"]
         #                    if datetime.fromisoformat(a["dueAt"]) < today and a.get("missed")]
@@ -461,9 +467,9 @@ def setParams():
     global courseId
     if (len(school) == 0 and len(sys.argv) > 1):
         courseId = sys.argv[1]
-    # else:
-        # school   = input("Enter School: ")
-        # courseId = input("Enter Course: ")
+    else:
+        school   = input("Enter School: ")
+        courseId = input("Enter Course: ")
     school   = "byupw" if school   == "" else school
     courseId = "7113"  if courseId == "" else courseId
 
