@@ -117,10 +117,10 @@ def studentSearch():
                     missed         = [s for s in allAssignments["submissions"] if     s["missed"]]
                     submitted      = [s for s in allAssignments["submissions"] if not s["missed"]]
 
-                    print(f"{student["first"]} {student["last"]}\nEmail:\t\t{student["email"]}\nGroup:\t\t{student["group"]}\nTime Zone:\t{student["tz"]}\nLast Login:\t{student["login"]}\nID:\t\t{student["id"]}\nScore:\t\t{student["score"]}\nGrade:\t\t{student["grade"]}\nTime Active:\t{student["activityTime"]}")
-                    print("\n".join(f"{rowColor()}Missed\t{a['title']}"                          
-                        for a in missed)    if missed else "None Missing")
-                    print("\n".join(f"{rowColor()}\t{a["title"]}\t{a["grade"]}/{a["possiblePts"]}\t{a["submittedAt"]}" 
+                    print(f"{student["first"]} {student["last"]}\nEmail:\t\t{student["email"]}\nGroup:\t\t{student["group"]}\nTime Zone:\t{student["tz"]}\nLast Login:\t{student["login"]}\nID:\t\t{student["id"]}\nScore:\t\t{student["score"]}\nGrade:\t\t{student["grade"]}\nTime Active:\t{student["activityTime"]}{x.reset}")
+                    print("\n".join(f"{rowColor()}{x.fgBRed}Missed{rowColor(-1)}\t{a['title']}{x.reset}"                          
+                        for a in missed)    if missed else f"{x.fgGreen}None Missing{x.reset}")
+                    print("\n".join(f"{rowColor()}\t{a["title"]}\t{a["grade"]}/{a["possiblePts"]}\t{a["submittedAt"]}{x.reset}" 
                         for a in submitted) if submitted else "")
                 case "group":                       #   sorting by group
                     if group != student["group"]:           #   did the group change?
@@ -130,22 +130,22 @@ def studentSearch():
                         group = student["group"]            #   save current group
                         size = 0                            #   reset the group size
                     size += 1                               #   increment the group size
-                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["login"]} : {student["email"]} : {student["tz"]}")
+                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["login"]} : {student["email"]} : {student["tz"]}{x.reset}")
                 case "login" | "lastActivity":
-                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["login"]} : {student["group"]} : {student["lastActivity"]}");
+                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["login"]} : {student["group"]} : {student["lastActivity"]}{x.reset}");
                     lastLogin = datetime.fromisoformat(student["lastLogin"])
                     aWeekAgo = datetime.now(lastLogin.tzinfo) - timedelta(days=7)
                     if lastLogin < aWeekAgo and notifyNoneParticipating:
                         sendMessage([student["id"]], "You have not participated in the class this week",
                             "Please let me know if you are having trouble with the class")
                 case "id":
-                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}");
+                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}{x.reset}");
                 case "score" | "activityTime" | "grade":
-                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["score"]} : {student["grade"]} : {student["activityTime"]}");
+                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["score"]} : {student["grade"]} : {student["activityTime"]}{x.reset}");
                 case "first" | "tz":
-                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["group"]} : {student["email"]} : {student["tz"]}")
+                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["group"]} : {student["email"]} : {student["tz"]}{x.reset}")
                 case _:
-                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}")
+                    print(f"{rowColor()}{student["first"]} {student["last"]} : {student["email"]} : {student["id"]}{x.reset}")
         sortBy = input(f"{x.reset}Sort By (first, last, group, score, login, tz, email, id, search): ")
 
 def getAllStudentDetails(courseId):
@@ -171,6 +171,11 @@ def getAllStudentDetails(courseId):
             profile   = getStudentProfile(student["id"])
             lastLogin = getLastLogin(student["id"])
 
+            lastLogin = (
+                        lastLogin.replace("T", " ")[5:16]
+                        if lastLogin else "     "
+            )
+
             lastName, rest = student["sortable_name"].split(", ")
             firstName = rest.split(" ")[0].ljust(10)[:10]
             tm  = scores[student["id"]]["activityTime"]
@@ -186,7 +191,7 @@ def getAllStudentDetails(courseId):
             student["login"]        = lastLogin.replace("T", " ")[5:16]
             student["name"]         = student["sortable_name"]
             student["score"]        = scores[student["id"]]["score"]
-            student["tz"]           = profile["time_zone"]
+            student["tz"]           = profile["time_zone"].ljust(15)
             _studentsById[courseId][student.get("id")] = student
 
     return _studentsById[courseId]
@@ -262,9 +267,9 @@ def getAssignments(courseId):
         sub = [        {
             "id"             : a["id"],
             "dueAt"          : a["due_at"],
-            "lockAt"         : a["lock_at"],
+            "loc`kAt"         : a["lock_at"],
             "possiblePts"    : f"{a["points_possible"]:2.0f}",
-            "title"          : a["name"].ljust(50),
+            "title"          : a["name"].ljust(55),
             "hasSubmissions" : a["has_submitted_submissions"]
         } for a in tmp]
 
@@ -300,12 +305,23 @@ def getCourseActivity(courseId):
         _enrollments[courseId] = getCanvasData(f"/courses/{courseId}/enrollments", {"per_page": 100, "type[]": "StudentEnrollment"}, "activity") 
         tmp = {
             student["user_id"]: {
-                "lastActivity": f"{student["last_activity_at"].replace("T", " ")[5:16]}",
-                "activityTime":    student["total_activity_time"],
-                "grade"       : f"{student["grades"]["current_grade"].ljust(2)}",
-                "score"       : f"{student["grades"]["current_score"]:3.0f}",
-        } for student in _enrollments[courseId]}
-        _enrollments[courseId] = tmp
+                "lastActivity": (
+                    student["last_activity_at"].replace("T", " ")[5:16]
+                    if student.get("last_activity_at") else "No activity"
+                ),
+                "activityTime": student.get("total_activity_time", 0),
+                "grade": (
+                    student.get("grades", {}).get("current_grade", "").ljust(2)
+                    if student.get("grades") and student["grades"].get("current_grade") else "--"
+                ),
+                "score": (
+                    f'{student.get("grades", {}).get("current_score", 0):3.0f}'
+                    if student.get("grades") and student["grades"].get("current_score") is not None else "  0"
+                ),
+            }
+            for student in _enrollments[courseId]
+        }
+    _enrollments[courseId] = tmp
     return _enrollments[courseId]
 
 # traverse from the categories in a course to the groups to the members
